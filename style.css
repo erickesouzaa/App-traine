@@ -1,0 +1,29 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+/* estado padrão das abas */
+.tab-btn {
+  color: #9ca3af; /* gray-400 */
+  border-bottom: 2px solid transparent;
+}
+
+/* aba ativa */
+.tab-btn.active {
+  color: #3b82f6;          /* blue-500 */
+  border-color: #3b82f6;
+}
+
+/* cartõezinhos padrão */
+.card {
+  background: rgba(15, 23, 42, 0.9); /* slate-900 */
+  border-radius: 0.75rem;
+  border: 1px solid #1e293b; /* slate-800 */
+  padding: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
