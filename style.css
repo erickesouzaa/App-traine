@@ -1,0 +1,131 @@
+body {
+  background: #020617;
+  color: #e5e7eb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tabs */
+.tab-btn.active {
+  border-bottom: 2px solid #3b82f6;
+  color: #e5e7eb;
+}
+
+/* Cartões */
+.card {
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.8);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(30, 64, 175, 0.7);
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Estados vazios */
+.empty-state {
+  text-align: center;
+  color: #9ca3af;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px dashed rgba(75, 85, 99, 0.8);
+  background: rgba(15, 23, 42, 0.7);
+  font-size: 0.9rem;
+}
+
+/* Botões */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+/* FAB */
+.fab-wrapper {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.fab {
+  pointer-events: auto;
+  border-radius: 9999px;
+  padding: 0.85rem 1.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.9);
+}
+.fab.hidden {
+  display: none;
+}
+
+/* Modais */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.9);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
+}
+.modal-backdrop.show {
+  display: flex;
+}
+.modal-panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  background: #020617;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  padding: 0.75rem 1rem 1rem;
+  overflow-y: auto;
+}
+
+/* Inputs */
+.input-dark {
+  width: 100%;
+  background: #020617;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  color: #e5e7eb;
+}
+.input-dark:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
