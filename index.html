@@ -15,9 +15,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="bg-slate-950">
-  <div class="app-shell">
+  <div class="app-shell min-h-screen flex flex-col">
     <!-- HEADER -->
-    <header class="px-4 pt-4 pb-2 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/80 backdrop-blur">
+    <header class="px-4 pt-4 pb-2 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/80 backdrop-blur z-20">
       <div class="flex items-center gap-2">
         <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/50">
           <i data-lucide="dumbbell" class="w-4 h-4 text-blue-400"></i>
@@ -31,20 +31,6 @@
         <i data-lucide="user" class="w-4 h-4 text-slate-300"></i>
       </button>
     </header>
-
-    <!-- TABS -->
-    <nav class="px-4 pt-3 pb-1 flex gap-6 text-xs font-medium text-slate-400 border-b border-slate-800/70">
-      <button class="tab-btn active pb-2" data-tab="today">Rastrear</button>
-      <button class="tab-btn pb-2" data-tab="routines">Rotinas</button>
-      <button class="tab-btn pb-2" data-tab="feed">Feed</button>
-      <button class="tab-btn pb-2" data-tab="profile">Perfil</button>
-    </nav>
-
-    <!-- LOADING -->
-    <div id="loading-state" class="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm gap-3">
-      <div class="w-9 h-9 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin"></div>
-      <p>A carregar o app e sincronizar dados...</p>
-    </div>
 
     <!-- MAIN CONTENT -->
     <main id="app-content" class="flex-1 hidden px-4 py-4 space-y-4 pb-24">
@@ -68,7 +54,33 @@
         <div id="profile-container"></div>
       </section>
     </main>
+
+    <!-- LOADING -->
+    <div id="loading-state" class="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm gap-3">
+      <div class="w-9 h-9 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin"></div>
+      <p>A carregar o app e sincronizar dados...</p>
+    </div>
   </div>
+
+  <!-- NAV INFERIOR (tabs) -->
+  <nav class="fixed bottom-0 left-0 right-0 px-4 pt-2 pb-3 flex items-center justify-between text-xs font-medium text-slate-400 border-t border-slate-800/70 bg-slate-950/95 backdrop-blur z-30">
+    <button class="tab-btn active flex-1 flex flex-col items-center gap-1 pb-1" data-tab="today">
+      <i data-lucide="play-circle" class="w-4 h-4"></i>
+      <span>Rastrear</span>
+    </button>
+    <button class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1" data-tab="routines">
+      <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+      <span>Rotinas</span>
+    </button>
+    <button class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1" data-tab="feed">
+      <i data-lucide="activity" class="w-4 h-4"></i>
+      <span>Feed</span>
+    </button>
+    <button class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1" data-tab="profile">
+      <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+      <span>Perfil</span>
+    </button>
+  </nav>
 
   <!-- CRITICAL ERROR BAR (aparece só se der erro de localStorage) -->
   <div id="critical-error-bar" class="fixed top-0 left-0 right-0 bg-red-700 text-white text-xs text-center py-1 hidden z-50"></div>
@@ -79,7 +91,7 @@
   </div>
 
   <!-- MODAL: BIBLIOTECA DE EXERCÍCIOS -->
-  <div id="exercise-library-modal" class="modal-backdrop">
+  <div id="exercise-library-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-sm font-semibold text-slate-100">Biblioteca de Exercícios</h2>
@@ -93,7 +105,7 @@
   </div>
 
   <!-- MODAL: SETS DO EXERCÍCIO ATIVO -->
-  <div id="sets-modal" class="modal-backdrop">
+  <div id="sets-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
         <h2 id="sets-modal-title" class="text-sm font-semibold text-slate-100">Exercício</h2>
@@ -121,7 +133,7 @@
   </div>
 
   <!-- MODAL: CRIAR / EDITAR ROTINA -->
-  <div id="routine-modal" class="modal-backdrop">
+  <div id="routine-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
         <h2 id="routine-modal-title" class="text-sm font-semibold text-slate-100">Nova Rotina</h2>
