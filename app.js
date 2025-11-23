@@ -279,17 +279,39 @@ function finishWorkout() {
 }
 
 // ======== EXERCISE LIBRARY / ACTIVE WORKOUT ========
+// >>> CORRIGIDO para esconder/mostrar o modal de rotina corretamente
 function openLibraryModal(mode) {
-  exerciseLibraryMode = mode; // 'active' ou 'routine'
-  const modal = $("#exercise-library-modal");
-  modal.classList.add("show");
+  exerciseLibraryMode = mode || "active"; // 'active' ou 'routine'
+
+  const libraryModal = $("#exercise-library-modal");
+  const routineModal = $("#routine-modal");
+
+  // se vier da rotina, esconde o modal de rotina enquanto a biblioteca está aberta
+  if (exerciseLibraryMode === "routine" && routineModal) {
+    routineModal.classList.remove("show");
+  }
+
+  libraryModal.classList.add("show");
   renderExerciseList(EXERCISE_LIBRARY);
-  $("#exercise-search").value = "";
+  const search = $("#exercise-search");
+  if (search) search.value = "";
   lucide.createIcons();
 }
 
+// >>> CORRIGIDO para reabrir a rotina quando fechar a biblioteca (se for o caso)
 function closeModal(id) {
-  $("#" + id).classList.remove("show");
+  const modal = $("#" + id);
+  if (!modal) return;
+
+  modal.classList.remove("show");
+
+  // se fechou a biblioteca e ela estava em modo "routine", volta com o modal de rotina
+  if (id === "exercise-library-modal" && exerciseLibraryMode === "routine") {
+    const routineModal = $("#routine-modal");
+    if (routineModal) {
+      routineModal.classList.add("show");
+    }
+  }
 }
 
 function renderExerciseList(listData) {
