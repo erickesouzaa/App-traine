@@ -468,13 +468,7 @@ function addSetToCurrentExercise() {
   renderSetsTable(ex);
   renderTodayView();
 
-  // Se tiver descanso definido, pode futuramente disparar um timer aqui.
-  // Exemplo simples (alert):
-  // if (rest > 0) {
-  //   setTimeout(() => {
-  //     alert(`Descanso de ${rest}s terminou! Bora pra próxima série de ${ex.name}.`);
-  //   }, rest * 1000);
-  // }
+  // Aqui dá pra plugar um timer de descanso no futuro, se quiser
 }
 
 // ======== ROUTINES ========
