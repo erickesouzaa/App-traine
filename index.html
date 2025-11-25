@@ -118,10 +118,24 @@
 
       <div class="card p-3 mb-3">
         <p class="text-xs font-semibold text-slate-300 mb-2">Registrar nova série</p>
+
         <div class="grid grid-cols-2 gap-2 mb-2">
           <input id="set-weight-input" type="number" min="0" class="input-dark" placeholder="Peso (Kg)" value="10" />
           <input id="set-reps-input" type="number" min="1" class="input-dark" placeholder="Reps" value="10" />
         </div>
+
+        <!-- Novo campo: descanso entre as séries -->
+        <div class="mb-3">
+          <input
+            id="set-rest-input"
+            type="number"
+            min="0"
+            class="input-dark"
+            placeholder="Descanso (segundos)"
+            value="60"
+          />
+        </div>
+
         <button id="add-set-btn" class="btn-primary w-full">Adicionar Série</button>
       </div>
 
