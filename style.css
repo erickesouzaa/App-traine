@@ -2,6 +2,7 @@ body {
   background: #020617;
   color: #e5e7eb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  overflow-x: hidden;
 }
 
 .app-shell {
@@ -12,7 +13,7 @@ body {
   flex-direction: column;
 }
 
-/* Tabs */
+/* Tabs (botões da barra inferior) */
 .tab-btn.active {
   border-bottom: 2px solid #3b82f6;
   color: #e5e7eb;
@@ -67,15 +68,16 @@ body {
   background: #1d4ed8;
 }
 
-/* FAB */
+/* FAB (botão flutuante) */
 .fab-wrapper {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 1rem;
+  bottom: 4.5rem;            /* sobe o FAB pra não ficar colado na barra inferior */
   display: flex;
   justify-content: center;
   pointer-events: none;
+  z-index: 35;               /* acima da nav (z-30) e abaixo dos modais (z-40) */
 }
 .fab {
   pointer-events: auto;
