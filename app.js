@@ -42,6 +42,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 function showCriticalError(msg) {
   const bar = $("#critical-error-bar");
+  if (!bar) return;
   bar.textContent = msg;
   bar.classList.remove("hidden");
 }
@@ -85,6 +86,7 @@ function formatTime(dateMs) {
   const d = new Date(dateMs);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
+
 function formatDateTime(dateMs) {
   const d = new Date(dateMs);
   return d.toLocaleString("pt-BR", {
@@ -98,11 +100,14 @@ function formatDateTime(dateMs) {
 
 // ======== NAV / RENDER ========
 function renderApp() {
-  $("#loading-state").classList.add("hidden");
-  $("#app-content").classList.remove("hidden");
+  const loading = $("#loading-state");
+  const appContent = $("#app-content");
+  if (loading) loading.classList.add("hidden");
+  if (appContent) appContent.classList.remove("hidden");
+
   renderCurrentView();
   renderFab();
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 function renderCurrentView() {
@@ -110,7 +115,8 @@ function renderCurrentView() {
     btn.classList.toggle("active", btn.dataset.tab === activeTab)
   );
   $$(".view-content").forEach((sec) => sec.classList.add("hidden"));
-  $("#" + activeTab + "-view").classList.remove("hidden");
+  const current = $("#" + activeTab + "-view");
+  if (current) current.classList.remove("hidden");
 
   if (activeTab === "today") renderTodayView();
   else if (activeTab === "routines") renderRoutinesView();
@@ -127,6 +133,7 @@ function openTab(tab) {
 function renderFab() {
   const fab = $("#fab-button");
   const wrapper = $("#fab-container");
+  if (!fab || !wrapper) return;
 
   if (activeTab === "today" && activeWorkout) {
     fab.textContent = "FINALIZAR TREINO";
@@ -146,6 +153,8 @@ function renderFab() {
 // ======== TODAY VIEW ========
 function renderTodayView() {
   const cont = $("#today-container");
+  if (!cont) return;
+
   if (!activeWorkout) {
     cont.innerHTML = `
       <div class="empty-state mt-10">
@@ -156,7 +165,7 @@ function renderTodayView() {
           <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Exercício
         </button>
       </div>`;
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
     return;
   }
 
@@ -211,7 +220,7 @@ function renderTodayView() {
     </div>
 
     <div>${exHtml}</div>`;
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 function startWorkoutIfNeeded() {
@@ -279,12 +288,12 @@ function finishWorkout() {
 }
 
 // ======== EXERCISE LIBRARY / ACTIVE WORKOUT ========
-// >>> CORRIGIDO para esconder/mostrar o modal de rotina corretamente
 function openLibraryModal(mode) {
   exerciseLibraryMode = mode || "active"; // 'active' ou 'routine'
 
   const libraryModal = $("#exercise-library-modal");
   const routineModal = $("#routine-modal");
+  if (!libraryModal) return;
 
   // se vier da rotina, esconde o modal de rotina enquanto a biblioteca está aberta
   if (exerciseLibraryMode === "routine" && routineModal) {
@@ -295,10 +304,9 @@ function openLibraryModal(mode) {
   renderExerciseList(EXERCISE_LIBRARY);
   const search = $("#exercise-search");
   if (search) search.value = "";
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
-// >>> CORRIGIDO para reabrir a rotina quando fechar a biblioteca (se for o caso)
 function closeModal(id) {
   const modal = $("#" + id);
   if (!modal) return;
@@ -316,6 +324,8 @@ function closeModal(id) {
 
 function renderExerciseList(listData) {
   const list = $("#exercise-list");
+  if (!list) return;
+
   if (!listData.length) {
     list.innerHTML =
       '<p class="text-[11px] text-slate-500">Nenhum exercício encontrado.</p>';
@@ -377,7 +387,7 @@ function handleExerciseSearch(e) {
       ex.group.toLowerCase().includes(term)
   );
   renderExerciseList(filtered);
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 // ======== SETS MODAL ========
@@ -387,19 +397,30 @@ function openSetsModal(exerciseId) {
   if (!ex) return;
 
   setsExerciseId = exerciseId;
-  $("#sets-modal-title").textContent = ex.name;
-  $("#sets-exercise-info").textContent =
-    "Registre peso e repetições para cada série.";
-  $("#set-weight-input").value = ex.sets?.[ex.sets.length - 1]?.weight || 10;
-  $("#set-reps-input").value = ex.sets?.[ex.sets.length - 1]?.reps || 10;
+  const titleEl = $("#sets-modal-title");
+  const infoEl = $("#sets-exercise-info");
+  const weightInput = $("#set-weight-input");
+  const repsInput = $("#set-reps-input");
+  const restInput = $("#set-rest-input"); // opcional
+
+  if (titleEl) titleEl.textContent = ex.name;
+  if (infoEl)
+    infoEl.textContent = "Registre peso, repetições e descanso para cada série.";
+
+  const lastSet = ex.sets?.[ex.sets.length - 1] || null;
+  if (weightInput) weightInput.value = lastSet?.weight ?? 10;
+  if (repsInput) repsInput.value = lastSet?.reps ?? 10;
+  if (restInput) restInput.value = lastSet?.rest ?? 60; // exemplo: 60s padrão
 
   renderSetsTable(ex);
-  $("#sets-modal").classList.add("show");
-  lucide.createIcons();
+  const modal = $("#sets-modal");
+  if (modal) modal.classList.add("show");
+  if (window.lucide) lucide.createIcons();
 }
 
 function renderSetsTable(ex) {
   const cont = $("#sets-table");
+  if (!cont) return;
   const sets = Array.isArray(ex.sets) ? ex.sets : [];
   if (!sets.length) {
     cont.innerHTML =
@@ -407,13 +428,19 @@ function renderSetsTable(ex) {
     return;
   }
   cont.innerHTML = sets
-    .map(
-      (s, idx) => `
+    .map((s, idx) => {
+      const restLabel =
+        typeof s.rest === "number" && s.rest > 0
+          ? ` • descanso ${s.rest}s`
+          : "";
+      return `
     <div class="flex justify-between items-center px-2 py-1 rounded-md bg-slate-900/70 mb-1">
       <span class="text-[11px] text-slate-400">Série ${idx + 1}</span>
-      <span class="text-[11px] text-slate-200 font-semibold">${s.weight} kg x ${s.reps} reps</span>
-    </div>`
-    )
+      <span class="text-[11px] text-slate-200 font-semibold">
+        ${s.weight} kg x ${s.reps} reps${restLabel}
+      </span>
+    </div>`;
+    })
     .join("");
 }
 
@@ -422,31 +449,47 @@ function addSetToCurrentExercise() {
   const ex = activeWorkout.exercises.find((e) => e.id === setsExerciseId);
   if (!ex) return;
 
-  const weight = parseFloat($("#set-weight-input").value) || 0;
-  const reps = parseInt($("#set-reps-input").value) || 0;
+  const weightInput = $("#set-weight-input");
+  const repsInput = $("#set-reps-input");
+  const restInput = $("#set-rest-input"); // pode não existir no HTML
+
+  const weight = parseFloat(weightInput?.value || "0") || 0;
+  const reps = parseInt(repsInput?.value || "0") || 0;
+  const rest = restInput ? parseInt(restInput.value || "0") || 0 : 0;
+
   if (!weight || !reps) {
     alert("Informe peso e repetições válidos.");
     return;
   }
 
   ex.sets = ex.sets || [];
-  ex.sets.push({ weight, reps, ts: Date.now() });
+  ex.sets.push({ weight, reps, rest, ts: Date.now() });
   saveState();
   renderSetsTable(ex);
   renderTodayView();
+
+  // Se tiver descanso definido, pode futuramente disparar um timer aqui.
+  // Exemplo simples (alert):
+  // if (rest > 0) {
+  //   setTimeout(() => {
+  //     alert(`Descanso de ${rest}s terminou! Bora pra próxima série de ${ex.name}.`);
+  //   }, rest * 1000);
+  // }
 }
 
 // ======== ROUTINES ========
 function renderRoutinesView() {
   const cont = $("#routines-container");
+  if (!cont) return;
+
   if (!routines.length) {
     cont.innerHTML = `
       <div class="empty-state mt-8">
         <i data-lucide="clipboard-list" class="w-8 h-8 mx-auto mb-3 text-slate-500"></i>
         <p class="mb-1">Você ainda não tem rotinas salvas.</p>
-        <p class="text-[11px] text-slate-500">Use o botão abaixo para criar a primeira.</p>
+        <p class="text-[11px] text-slate-500">Use o botão flutuante para criar a primeira rotina.</p>
       </div>`;
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
     return;
   }
 
@@ -474,29 +517,36 @@ function renderRoutinesView() {
     </div>`
     )
     .join("");
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 function openRoutineModal(routineId) {
+  const titleEl = $("#routine-modal-title");
+  const deleteBtn = $("#delete-routine-btn");
+  const nameInput = $("#routine-name-input");
+  const modal = $("#routine-modal");
+
   if (routineId) {
     currentRoutine = routines.find((r) => r.id === routineId);
     if (!currentRoutine) return;
-    $("#routine-modal-title").textContent = "Editar Rotina";
-    $("#delete-routine-btn").classList.remove("hidden");
+    if (titleEl) titleEl.textContent = "Editar Rotina";
+    if (deleteBtn) deleteBtn.classList.remove("hidden");
   } else {
     currentRoutine = { id: "r_" + Date.now(), name: "", exercises: [] };
-    $("#routine-modal-title").textContent = "Nova Rotina";
-    $("#delete-routine-btn").classList.add("hidden");
+    if (titleEl) titleEl.textContent = "Nova Rotina";
+    if (deleteBtn) deleteBtn.classList.add("hidden");
   }
 
-  $("#routine-name-input").value = currentRoutine.name || "";
+  if (nameInput) nameInput.value = currentRoutine.name || "";
   renderRoutineModalContent();
-  $("#routine-modal").classList.add("show");
-  lucide.createIcons();
+  if (modal) modal.classList.add("show");
+  if (window.lucide) lucide.createIcons();
 }
 
 function renderRoutineModalContent() {
   const list = $("#routine-exercises-list");
+  if (!list) return;
+
   if (!currentRoutine || !currentRoutine.exercises.length) {
     list.innerHTML =
       '<p class="text-[11px] text-slate-500">Nenhum exercício ainda.</p>';
@@ -526,7 +576,8 @@ function removeExerciseFromRoutine(exId) {
 
 function saveRoutine() {
   if (!currentRoutine) return;
-  const name = $("#routine-name-input").value.trim();
+  const nameInput = $("#routine-name-input");
+  const name = (nameInput?.value || "").trim();
   if (name.length < 3) {
     alert("O nome da rotina deve ter pelo menos 3 caracteres.");
     return;
@@ -573,6 +624,8 @@ function startWorkoutFromRoutine(routineId) {
 // ======== FEED ========
 function renderFeedView() {
   const cont = $("#feed-container");
+  if (!cont) return;
+
   if (!communityFeed.length) {
     cont.innerHTML = `
       <div class="empty-state mt-8">
@@ -582,7 +635,7 @@ function renderFeedView() {
           Finalize um treino na aba <b>Rastrear</b> para vê-lo aqui.
         </p>
       </div>`;
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
     return;
   }
 
@@ -610,12 +663,14 @@ function renderFeedView() {
       </div>`;
     })
     .join("");
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 // ======== PROFILE ========
 function renderProfileView() {
   const cont = $("#profile-container");
+  if (!cont) return;
+
   const totalWorkouts = communityFeed.length;
   const totalSets = communityFeed.reduce((acc, w) => {
     return (
@@ -658,7 +713,7 @@ function renderProfileView() {
           : '<p class="text-[11px] text-slate-500">Finalize treinos com séries para ver PRs aqui.</p>'
       }
     </div>`;
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 // ======== INIT ========
