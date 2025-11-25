@@ -1,4 +1,3 @@
-// ======== ESTADO GLOBAL (modo 100% offline/localStorage) ========
 const STORAGE_KEYS = {
   ACTIVE_WORKOUT: "tt_activeWorkout",
   ROUTINES: "tt_routines",
@@ -11,9 +10,10 @@ let activeWorkout = null;
 let routines = [];
 let communityFeed = [];
 let personalRecords = [];
-let currentRoutine = null; // rotina sendo editada
-let setsExerciseId = null; // exercício aberto no modal de sets
-let exerciseLibraryMode = "active"; // 'active' | 'routine'
+let currentRoutine = null;
+let setsExerciseId = null;
+let exerciseLibraryMode = "active";
+let restCountdown = { intervalId: null, remaining: 0 };
 
 const EXERCISE_LIBRARY = [
   { id: "supino_reto", name: "Supino Reto com Barra", group: "Peito" },
@@ -36,7 +36,6 @@ const EXERCISE_LIBRARY = [
   { id: "elevacao_lateral", name: "Elevação Lateral", group: "Ombros" },
 ];
 
-// ======== HELPERS ========
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -52,7 +51,6 @@ function loadState() {
     const rt = localStorage.getItem(STORAGE_KEYS.ROUTINES);
     const fd = localStorage.getItem(STORAGE_KEYS.FEED);
     const pr = localStorage.getItem(STORAGE_KEYS.PRS);
-
     activeWorkout = aw ? JSON.parse(aw) : null;
     routines = rt ? JSON.parse(rt) : [];
     communityFeed = fd ? JSON.parse(fd) : [];
@@ -66,10 +64,7 @@ function loadState() {
 function saveState() {
   try {
     if (activeWorkout) {
-      localStorage.setItem(
-        STORAGE_KEYS.ACTIVE_WORKOUT,
-        JSON.stringify(activeWorkout)
-      );
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(activeWorkout));
     } else {
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKOUT);
     }
@@ -81,12 +76,12 @@ function saveState() {
   }
 }
 
-function formatTime(dateMs) {
-  const d = new Date(dateMs);
+function formatTime(ms) {
+  const d = new Date(ms);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
-function formatDateTime(dateMs) {
-  const d = new Date(dateMs);
+function formatDateTime(ms) {
+  const d = new Date(ms);
   return d.toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -96,7 +91,6 @@ function formatDateTime(dateMs) {
   });
 }
 
-// ======== NAV / RENDER ========
 function renderApp() {
   $("#loading-state").classList.add("hidden");
   $("#app-content").classList.remove("hidden");
@@ -143,7 +137,6 @@ function renderFab() {
   }
 }
 
-// ======== TODAY VIEW ========
 function renderTodayView() {
   const cont = $("#today-container");
   if (!activeWorkout) {
@@ -160,10 +153,7 @@ function renderTodayView() {
     return;
   }
 
-  const startedAtLabel = activeWorkout.startedAt
-    ? formatTime(activeWorkout.startedAt)
-    : "—";
-
+  const startedAtLabel = activeWorkout.startedAt ? formatTime(activeWorkout.startedAt) : "—";
   const exHtml =
     activeWorkout.exercises && activeWorkout.exercises.length
       ? activeWorkout.exercises
@@ -239,18 +229,11 @@ function finishWorkout() {
     return;
   }
 
-  const workout = {
-    ...activeWorkout,
-    finishedAt: Date.now(),
-  };
+  const workout = { ...activeWorkout, finishedAt: Date.now() };
 
-  // Atualiza PRs
   for (const ex of workout.exercises) {
     if (!Array.isArray(ex.sets)) continue;
-    const maxWeight = ex.sets.reduce(
-      (m, s) => (s.weight > m ? s.weight : m),
-      0
-    );
+    const maxWeight = ex.sets.reduce((m, s) => (s.weight > m ? s.weight : m), 0);
     if (!maxWeight) continue;
 
     const existing = personalRecords.find((p) => p.exerciseId === ex.id);
@@ -278,17 +261,13 @@ function finishWorkout() {
   renderApp();
 }
 
-// ======== EXERCISE LIBRARY / ACTIVE WORKOUT ========
 function openLibraryModal(mode) {
-  exerciseLibraryMode = mode || "active"; // 'active' ou 'routine'
-
+  exerciseLibraryMode = mode || "active";
   const libraryModal = $("#exercise-library-modal");
   const routineModal = $("#routine-modal");
-
   if (exerciseLibraryMode === "routine" && routineModal) {
     routineModal.classList.remove("show");
   }
-
   libraryModal.classList.add("show");
   renderExerciseList(EXERCISE_LIBRARY);
   const search = $("#exercise-search");
@@ -299,22 +278,17 @@ function openLibraryModal(mode) {
 function closeModal(id) {
   const modal = $("#" + id);
   if (!modal) return;
-
   modal.classList.remove("show");
-
   if (id === "exercise-library-modal" && exerciseLibraryMode === "routine") {
     const routineModal = $("#routine-modal");
-    if (routineModal) {
-      routineModal.classList.add("show");
-    }
+    if (routineModal) routineModal.classList.add("show");
   }
 }
 
 function renderExerciseList(listData) {
   const list = $("#exercise-list");
   if (!listData.length) {
-    list.innerHTML =
-      '<p class="text-[11px] text-slate-500">Nenhum exercício encontrado.</p>';
+    list.innerHTML = '<p class="text-[11px] text-slate-500">Nenhum exercício encontrado.</p>';
     return;
   }
   list.innerHTML = listData
@@ -341,11 +315,7 @@ function selectExerciseFromLibrary(exId) {
     if (activeWorkout.exercises.find((e) => e.id === exBase.id)) {
       alert("Esse exercício já está no treino.");
     } else {
-      activeWorkout.exercises.push({
-        id: exBase.id,
-        name: exBase.name,
-        sets: [],
-      });
+      activeWorkout.exercises.push({ id: exBase.id, name: exBase.name, sets: [] });
       saveState();
     }
     closeModal("exercise-library-modal");
@@ -355,10 +325,7 @@ function selectExerciseFromLibrary(exId) {
     if (currentRoutine.exercises.find((e) => e.id === exBase.id)) {
       alert("Esse exercício já está na rotina.");
     } else {
-      currentRoutine.exercises.push({
-        id: exBase.id,
-        name: exBase.name,
-      });
+      currentRoutine.exercises.push({ id: exBase.id, name: exBase.name });
       renderRoutineModalContent();
     }
     closeModal("exercise-library-modal");
@@ -368,15 +335,48 @@ function selectExerciseFromLibrary(exId) {
 function handleExerciseSearch(e) {
   const term = e.target.value.toLowerCase().trim();
   const filtered = EXERCISE_LIBRARY.filter(
-    (ex) =>
-      ex.name.toLowerCase().includes(term) ||
-      ex.group.toLowerCase().includes(term)
+    (ex) => ex.name.toLowerCase().includes(term) || ex.group.toLowerCase().includes(term)
   );
   renderExerciseList(filtered);
   lucide.createIcons();
 }
 
-// ======== SETS MODAL ========
+function resetRestDisplay() {
+  const display = $("#rest-timer-display");
+  if (!display) return;
+  display.classList.add("hidden");
+  display.textContent = "";
+  if (restCountdown.intervalId) {
+    clearInterval(restCountdown.intervalId);
+    restCountdown.intervalId = null;
+    restCountdown.remaining = 0;
+  }
+}
+
+function startRestTimer(seconds) {
+  const display = $("#rest-timer-display");
+  resetRestDisplay();
+  if (!display || !seconds) return;
+  restCountdown.remaining = seconds;
+  display.classList.remove("hidden");
+  display.textContent = `Descanso: ${restCountdown.remaining}s restantes`;
+
+  restCountdown.intervalId = setInterval(() => {
+    restCountdown.remaining -= 1;
+    if (restCountdown.remaining > 0) {
+      display.textContent = `Descanso: ${restCountdown.remaining}s restantes`;
+    } else {
+      clearInterval(restCountdown.intervalId);
+      restCountdown.intervalId = null;
+      display.textContent = "Descanso finalizado! 🎯";
+      try {
+        if (navigator.vibrate) navigator.vibrate(200);
+      } catch (e) {}
+      alert("Descanso finalizado! Pode iniciar a próxima série ou próximo exercício.");
+    }
+  }, 1000);
+}
+
 function openSetsModal(exerciseId) {
   if (!activeWorkout) return;
   const ex = activeWorkout.exercises.find((e) => e.id === exerciseId);
@@ -388,11 +388,11 @@ function openSetsModal(exerciseId) {
     "Registre peso, repetições e descanso para cada série.";
 
   const lastSet = ex.sets && ex.sets.length ? ex.sets[ex.sets.length - 1] : null;
-
   $("#set-weight-input").value = lastSet?.weight ?? 10;
   $("#set-reps-input").value = lastSet?.reps ?? 10;
   $("#set-rest-input").value = lastSet?.rest ?? 60;
 
+  resetRestDisplay();
   renderSetsTable(ex);
   $("#sets-modal").classList.add("show");
   lucide.createIcons();
@@ -428,7 +428,6 @@ function addSetToCurrentExercise() {
   const weight = parseFloat($("#set-weight-input").value) || 0;
   const reps = parseInt($("#set-reps-input").value) || 0;
   const rest = parseInt($("#set-rest-input").value) || 0;
-
   if (!weight || !reps) {
     alert("Informe peso e repetições válidos.");
     return;
@@ -439,9 +438,10 @@ function addSetToCurrentExercise() {
   saveState();
   renderSetsTable(ex);
   renderTodayView();
+  if (rest > 0) startRestTimer(rest);
+  else resetRestDisplay();
 }
 
-// ======== ROUTINES ========
 function renderRoutinesView() {
   const cont = $("#routines-container");
   if (!routines.length) {
@@ -479,7 +479,7 @@ function renderRoutinesView() {
       </p>
       <button class="btn-primary w-full text-[11px]"
               onclick="startWorkoutFromRoutine('${r.id}')">
-        Iniciar Treino com esta Rotina
+        Iniciar treino com esta rotina
       </button>
     </div>`
     )
@@ -528,9 +528,7 @@ function renderRoutineModalContent() {
 
 function removeExerciseFromRoutine(exId) {
   if (!currentRoutine) return;
-  currentRoutine.exercises = currentRoutine.exercises.filter(
-    (e) => e.id !== exId
-  );
+  currentRoutine.exercises = currentRoutine.exercises.filter((e) => e.id !== exId);
   renderRoutineModalContent();
 }
 
@@ -580,7 +578,6 @@ function startWorkoutFromRoutine(routineId) {
   renderApp();
 }
 
-// ======== FEED ========
 function renderFeedView() {
   const cont = $("#feed-container");
   if (!communityFeed.length) {
@@ -598,14 +595,9 @@ function renderFeedView() {
 
   cont.innerHTML = communityFeed
     .map((w) => {
-      const dateLabel = w.finishedAt
-        ? formatDateTime(w.finishedAt)
-        : "Data desconhecida";
+      const dateLabel = w.finishedAt ? formatDateTime(w.finishedAt) : "Data desconhecida";
       const exSummary = (w.exercises || [])
-        .map(
-          (ex) =>
-            `${ex.name} (${Array.isArray(ex.sets) ? ex.sets.length : 0} sets)`
-        )
+        .map((ex) => `${ex.name} (${Array.isArray(ex.sets) ? ex.sets.length : 0} sets)`)
         .join(", ");
       return `
       <div class="card p-3 mb-2">
@@ -623,7 +615,6 @@ function renderFeedView() {
   lucide.createIcons();
 }
 
-// ======== PROFILE ========
 function renderProfileView() {
   const cont = $("#profile-container");
   const totalWorkouts = communityFeed.length;
@@ -671,22 +662,16 @@ function renderProfileView() {
   lucide.createIcons();
 }
 
-// ======== INIT ========
 window.addEventListener("DOMContentLoaded", () => {
-  // Tabs
   $$(".tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => openTab(btn.dataset.tab))
   );
 
   const searchInput = $("#exercise-search");
-  if (searchInput) {
-    searchInput.addEventListener("input", handleExerciseSearch);
-  }
+  if (searchInput) searchInput.addEventListener("input", handleExerciseSearch);
 
   const addSetBtn = $("#add-set-btn");
-  if (addSetBtn) {
-    addSetBtn.addEventListener("click", addSetToCurrentExercise);
-  }
+  if (addSetBtn) addSetBtn.addEventListener("click", addSetToCurrentExercise);
 
   const saveRoutineBtn = $("#save-routine-btn");
   if (saveRoutineBtn) saveRoutineBtn.addEventListener("click", saveRoutine);
@@ -698,7 +683,6 @@ window.addEventListener("DOMContentLoaded", () => {
   renderApp();
 });
 
-// Expor funções usadas em onclick no HTML
 window.openTab = openTab;
 window.openLibraryModal = openLibraryModal;
 window.closeModal = closeModal;
