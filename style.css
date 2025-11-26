@@ -2,7 +2,6 @@ body {
   background: #020617;
   color: #e5e7eb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  overflow-x: hidden;
 }
 
 .app-shell {
@@ -13,10 +12,16 @@ body {
   flex-direction: column;
 }
 
-/* Tabs (botões da barra inferior) */
+/* Tabs inferiores */
+.tab-btn {
+  opacity: 0.7;
+}
 .tab-btn.active {
-  border-bottom: 2px solid #3b82f6;
+  opacity: 1;
   color: #e5e7eb;
+}
+.tab-btn.active span {
+  border-bottom: 2px solid #3b82f6;
 }
 
 /* Cartões */
@@ -68,16 +73,26 @@ body {
   background: #1d4ed8;
 }
 
-/* FAB (botão flutuante) */
+/* Botões de navegação de exercício */
+.nav-ex-btn {
+  border-radius: 9999px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  background: rgba(15, 23, 42, 0.95);
+}
+.nav-ex-btn[disabled] {
+  opacity: 0.35;
+}
+
+/* FAB */
 .fab-wrapper {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 4.5rem;            /* sobe o FAB pra não ficar colado na barra inferior */
+  bottom: 3.5rem; /* acima da nav inferior */
   display: flex;
   justify-content: center;
   pointer-events: none;
-  z-index: 35;               /* acima da nav (z-30) e abaixo dos modais (z-40) */
 }
 .fab {
   pointer-events: auto;
