@@ -15,34 +15,17 @@ let currentRoutine = null; // rotina sendo editada
 let setsExerciseId = null; // exercício aberto no modal de sets
 let exerciseLibraryMode = "active"; // 'active' | 'routine'
 
-const EXERCISE_LIBRARY = [
-  { id: "supino_reto", name: "Supino Reto com Barra", group: "Peito" },
-  {
-    id: "supino_inclinado",
-    name: "Supino Inclinado com Halteres",
-    group: "Peito",
-  },
-  { id: "crucifixo_maquina", name: "Crucifixo no Voador", group: "Peito" },
-  { id: "flexao", name: "Flexão de Braços", group: "Peito / Tríceps" },
-  { id: "agachamento", name: "Agachamento Livre", group: "Pernas" },
-  { id: "leg_press", name: "Leg Press 45°", group: "Pernas" },
-  { id: "extensora", name: "Cadeira Extensora", group: "Quadríceps" },
-  { id: "flexora", name: "Cadeira Flexora", group: "Posterior" },
-  { id: "panturrilha", name: "Panturrilha em Pé", group: "Panturrilha" },
-  { id: "remada_barra", name: "Remada Curvada com Barra", group: "Costas" },
-  { id: "puxada_alta", name: "Puxada Alta", group: "Costas" },
-  { id: "remada_baixa", name: "Remada Baixa", group: "Costas" },
-  { id: "rosca_direta", name: "Rosca Direta", group: "Bíceps" },
-  { id: "rosca_martelo", name: "Rosca Martelo", group: "Bíceps" },
-  { id: "triceps_corda", name: "Tríceps Corda", group: "Tríceps" },
-  { id: "triceps_testa", name: "Tríceps Testa", group: "Tríceps" },
-  {
-    id: "desenvolvimento",
-    name: "Desenvolvimento com Halteres",
-    group: "Ombros",
-  },
-  { id: "elevacao_lateral", name: "Elevação Lateral", group: "Ombros" },
-];
+// biblioteca agora vem do exercises.js
+const EXERCISE_LIBRARY = window.EXERCISE_LIBRARY || [];
+
+// Timer de descanso
+let restTimer = {
+  isActive: false,
+  remaining: 0,
+  total: 0,
+  exerciseId: null,
+  intervalId: null,
+};
 
 // ======== HELPERS ========
 const $ = (sel) => document.querySelector(sel);
@@ -50,7 +33,6 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 function showCriticalError(msg) {
   const bar = $("#critical-error-bar");
-  if (!bar) return;
   bar.textContent = msg;
   bar.classList.remove("hidden");
 }
@@ -94,6 +76,7 @@ function formatTime(dateMs) {
   const d = new Date(dateMs);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
+
 function formatDateTime(dateMs) {
   const d = new Date(dateMs);
   return d.toLocaleString("pt-BR", {
@@ -105,20 +88,104 @@ function formatDateTime(dateMs) {
   });
 }
 
+// ======== TIMER DE DESCANSO ========
+function playBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc.start();
+    osc.stop(now + 0.5);
+  } catch (e) {
+    console.warn("Não foi possível tocar beep:", e);
+  }
+}
+
+function updateRestBar() {
+  const bar = $("#rest-timer-bar");
+  const label = $("#rest-timer-label");
+  if (!bar || !label || !restTimer.isActive) return;
+
+  const m = Math.floor(restTimer.remaining / 60);
+  const s = restTimer.remaining % 60;
+  label.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function clearRestTimer() {
+  if (restTimer.intervalId) clearInterval(restTimer.intervalId);
+  restTimer = {
+    isActive: false,
+    remaining: 0,
+    total: 0,
+    exerciseId: null,
+    intervalId: null,
+  };
+  const bar = $("#rest-timer-bar");
+  if (bar) bar.classList.add("hidden");
+}
+
+function startRestTimer(seconds, exerciseId) {
+  clearRestTimer();
+  if (!seconds || seconds <= 0) return;
+
+  const bar = $("#rest-timer-bar");
+  if (!bar) return;
+
+  restTimer.isActive = true;
+  restTimer.remaining = seconds;
+  restTimer.total = seconds;
+  restTimer.exerciseId = exerciseId;
+
+  bar.classList.remove("hidden");
+  updateRestBar();
+
+  restTimer.intervalId = setInterval(() => {
+    if (!restTimer.isActive) return;
+    restTimer.remaining -= 1;
+    if (restTimer.remaining <= 0) {
+      clearRestTimer();
+      playBeep();
+      // Reabre o modal do exercício atual para registrar a próxima série
+      if (exerciseId) {
+        openSetsModal(exerciseId);
+      }
+      return;
+    }
+    updateRestBar();
+  }, 1000);
+}
+
+function adjustRest(deltaSeconds) {
+  if (!restTimer.isActive) return;
+  restTimer.remaining = Math.max(0, restTimer.remaining + deltaSeconds);
+  updateRestBar();
+}
+
+function skipRest() {
+  if (!restTimer.isActive) return;
+  clearRestTimer();
+}
+
 // ======== NAV / RENDER ========
 function renderApp() {
-  const loading = $("#loading-state");
-  const appContent = $("#app-content");
-
-  if (loading) loading.classList.add("hidden");
-  if (appContent) appContent.classList.remove("hidden");
-
+  $("#loading-state").classList.add("hidden");
+  $("#app-content").classList.remove("hidden");
   renderCurrentView();
   renderFab();
-
-  if (window.lucide && typeof window.lucide.createIcons === "function") {
-    window.lucide.createIcons();
-  }
+  lucide.createIcons();
 }
 
 function renderCurrentView() {
@@ -126,9 +193,7 @@ function renderCurrentView() {
     btn.classList.toggle("active", btn.dataset.tab === activeTab)
   );
   $$(".view-content").forEach((sec) => sec.classList.add("hidden"));
-
-  const view = $("#" + activeTab + "-view");
-  if (view) view.classList.remove("hidden");
+  $("#" + activeTab + "-view").classList.remove("hidden");
 
   if (activeTab === "today") renderTodayView();
   else if (activeTab === "routines") renderRoutinesView();
@@ -145,7 +210,6 @@ function openTab(tab) {
 function renderFab() {
   const fab = $("#fab-button");
   const wrapper = $("#fab-container");
-  if (!fab || !wrapper) return;
 
   if (activeTab === "today" && activeWorkout) {
     fab.textContent = "FINALIZAR TREINO";
@@ -165,8 +229,6 @@ function renderFab() {
 // ======== TODAY VIEW ========
 function renderTodayView() {
   const cont = $("#today-container");
-  if (!cont) return;
-
   if (!activeWorkout) {
     cont.innerHTML = `
       <div class="empty-state mt-10">
@@ -177,7 +239,7 @@ function renderTodayView() {
           <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Exercício
         </button>
       </div>`;
-    if (window.lucide) window.lucide.createIcons();
+    lucide.createIcons();
     return;
   }
 
@@ -232,7 +294,7 @@ function renderTodayView() {
     </div>
 
     <div>${exHtml}</div>`;
-  if (window.lucide) window.lucide.createIcons();
+  lucide.createIcons();
 }
 
 function startWorkoutIfNeeded() {
@@ -250,6 +312,7 @@ function cancelWorkout() {
   if (confirm("Cancelar e apagar o treino atual?")) {
     activeWorkout = null;
     saveState();
+    clearRestTimer();
     renderApp();
   }
 }
@@ -294,6 +357,7 @@ function finishWorkout() {
 
   activeWorkout = null;
   saveState();
+  clearRestTimer();
   alert("Treino finalizado!");
   openTab("feed");
   renderApp();
@@ -306,9 +370,6 @@ function openLibraryModal(mode) {
   const libraryModal = $("#exercise-library-modal");
   const routineModal = $("#routine-modal");
 
-  if (!libraryModal) return;
-
-  // se vier da rotina, esconde o modal de rotina enquanto a biblioteca está aberta
   if (exerciseLibraryMode === "routine" && routineModal) {
     routineModal.classList.remove("show");
   }
@@ -317,7 +378,7 @@ function openLibraryModal(mode) {
   renderExerciseList(EXERCISE_LIBRARY);
   const search = $("#exercise-search");
   if (search) search.value = "";
-  if (window.lucide) window.lucide.createIcons();
+  lucide.createIcons();
 }
 
 function closeModal(id) {
@@ -326,7 +387,7 @@ function closeModal(id) {
 
   modal.classList.remove("show");
 
-  // se fechou a biblioteca e ela estava em modo "routine", volta com o modal de rotina
+  // se fechou a biblioteca em modo rotina, volta com o modal de rotina
   if (id === "exercise-library-modal" && exerciseLibraryMode === "routine") {
     const routineModal = $("#routine-modal");
     if (routineModal) {
@@ -337,8 +398,6 @@ function closeModal(id) {
 
 function renderExerciseList(listData) {
   const list = $("#exercise-list");
-  if (!list) return;
-
   if (!listData.length) {
     list.innerHTML =
       '<p class="text-[11px] text-slate-500">Nenhum exercício encontrado.</p>';
@@ -400,7 +459,7 @@ function handleExerciseSearch(e) {
       ex.group.toLowerCase().includes(term)
   );
   renderExerciseList(filtered);
-  if (window.lucide) window.lucide.createIcons();
+  lucide.createIcons();
 }
 
 // ======== SETS MODAL ========
@@ -410,28 +469,22 @@ function openSetsModal(exerciseId) {
   if (!ex) return;
 
   setsExerciseId = exerciseId;
-  const title = $("#sets-modal-title");
-  const info = $("#sets-exercise-info");
-  const weightInput = $("#set-weight-input");
-  const repsInput = $("#set-reps-input");
-  const modal = $("#sets-modal");
+  $("#sets-modal-title").textContent = ex.name;
+  $("#sets-exercise-info").textContent =
+    "Registre peso, repetições e descanso para cada série.";
 
-  if (title) title.textContent = ex.name;
-  if (info)
-    info.textContent = "Registre peso e repetições para cada série.";
-  if (weightInput)
-    weightInput.value = ex.sets?.[ex.sets.length - 1]?.weight || 10;
-  if (repsInput) repsInput.value = ex.sets?.[ex.sets.length - 1]?.reps || 10;
+  const lastSet = ex.sets && ex.sets.length ? ex.sets[ex.sets.length - 1] : null;
+  $("#set-weight-input").value = lastSet?.weight || 10;
+  $("#set-reps-input").value = lastSet?.reps || 10;
+  $("#set-rest-input").value = lastSet?.restSeconds || 60;
 
   renderSetsTable(ex);
-  if (modal) modal.classList.add("show");
-  if (window.lucide) window.lucide.createIcons();
+  $("#sets-modal").classList.add("show");
+  lucide.createIcons();
 }
 
 function renderSetsTable(ex) {
   const cont = $("#sets-table");
-  if (!cont) return;
-
   const sets = Array.isArray(ex.sets) ? ex.sets : [];
   if (!sets.length) {
     cont.innerHTML =
@@ -443,7 +496,10 @@ function renderSetsTable(ex) {
       (s, idx) => `
     <div class="flex justify-between items-center px-2 py-1 rounded-md bg-slate-900/70 mb-1">
       <span class="text-[11px] text-slate-400">Série ${idx + 1}</span>
-      <span class="text-[11px] text-slate-200 font-semibold">${s.weight} kg x ${s.reps} reps</span>
+      <span class="text-[11px] text-slate-200 font-semibold">
+        ${s.weight} kg x ${s.reps} reps
+        ${s.restSeconds ? ` • ${s.restSeconds}s descanso` : ""}
+      </span>
     </div>`
     )
     .join("");
@@ -454,33 +510,38 @@ function addSetToCurrentExercise() {
   const ex = activeWorkout.exercises.find((e) => e.id === setsExerciseId);
   if (!ex) return;
 
-  const weight = parseFloat($("#set-weight-input")?.value) || 0;
-  const reps = parseInt($("#set-reps-input")?.value) || 0;
+  const weight = parseFloat($("#set-weight-input").value) || 0;
+  const reps = parseInt($("#set-reps-input").value) || 0;
+  const restSeconds = parseInt($("#set-rest-input").value) || 0;
   if (!weight || !reps) {
     alert("Informe peso e repetições válidos.");
     return;
   }
 
   ex.sets = ex.sets || [];
-  ex.sets.push({ weight, reps, ts: Date.now() });
+  ex.sets.push({ weight, reps, restSeconds, ts: Date.now() });
   saveState();
   renderSetsTable(ex);
   renderTodayView();
+
+  // inicia o descanso para a próxima série
+  if (restSeconds > 0) {
+    startRestTimer(restSeconds, setsExerciseId);
+    closeModal("sets-modal");
+  }
 }
 
 // ======== ROUTINES ========
 function renderRoutinesView() {
   const cont = $("#routines-container");
-  if (!cont) return;
-
   if (!routines.length) {
     cont.innerHTML = `
       <div class="empty-state mt-8">
         <i data-lucide="clipboard-list" class="w-8 h-8 mx-auto mb-3 text-slate-500"></i>
         <p class="mb-1">Você ainda não tem rotinas salvas.</p>
-        <p class="text-[11px] text-slate-500">Use o botão flutuante para criar a primeira.</p>
+        <p class="text-[11px] text-slate-500">Use o botão flutuante para criar a primeira rotina.</p>
       </div>`;
-    if (window.lucide) window.lucide.createIcons();
+    lucide.createIcons();
     return;
   }
 
@@ -508,38 +569,29 @@ function renderRoutinesView() {
     </div>`
     )
     .join("");
-  if (window.lucide) window.lucide.createIcons();
+  lucide.createIcons();
 }
 
 function openRoutineModal(routineId) {
-  const modal = $("#routine-modal");
-  const title = $("#routine-modal-title");
-  const deleteBtn = $("#delete-routine-btn");
-  const nameInput = $("#routine-name-input");
-
-  if (!modal || !title || !nameInput) return;
-
   if (routineId) {
     currentRoutine = routines.find((r) => r.id === routineId);
     if (!currentRoutine) return;
-    title.textContent = "Editar Rotina";
-    if (deleteBtn) deleteBtn.classList.remove("hidden");
+    $("#routine-modal-title").textContent = "Editar Rotina";
+    $("#delete-routine-btn").classList.remove("hidden");
   } else {
     currentRoutine = { id: "r_" + Date.now(), name: "", exercises: [] };
-    title.textContent = "Nova Rotina";
-    if (deleteBtn) deleteBtn.classList.add("hidden");
+    $("#routine-modal-title").textContent = "Nova Rotina";
+    $("#delete-routine-btn").classList.add("hidden");
   }
 
-  nameInput.value = currentRoutine.name || "";
+  $("#routine-name-input").value = currentRoutine.name || "";
   renderRoutineModalContent();
-  modal.classList.add("show");
-  if (window.lucide) window.lucide.createIcons();
+  $("#routine-modal").classList.add("show");
+  lucide.createIcons();
 }
 
 function renderRoutineModalContent() {
   const list = $("#routine-exercises-list");
-  if (!list) return;
-
   if (!currentRoutine || !currentRoutine.exercises.length) {
     list.innerHTML =
       '<p class="text-[11px] text-slate-500">Nenhum exercício ainda.</p>';
@@ -569,10 +621,7 @@ function removeExerciseFromRoutine(exId) {
 
 function saveRoutine() {
   if (!currentRoutine) return;
-  const nameInput = $("#routine-name-input");
-  if (!nameInput) return;
-
-  const name = nameInput.value.trim();
+  const name = $("#routine-name-input").value.trim();
   if (name.length < 3) {
     alert("O nome da rotina deve ter pelo menos 3 caracteres.");
     return;
@@ -612,6 +661,7 @@ function startWorkoutFromRoutine(routineId) {
     })),
   };
   saveState();
+  clearRestTimer();
   openTab("today");
   renderApp();
 }
@@ -619,8 +669,6 @@ function startWorkoutFromRoutine(routineId) {
 // ======== FEED ========
 function renderFeedView() {
   const cont = $("#feed-container");
-  if (!cont) return;
-
   if (!communityFeed.length) {
     cont.innerHTML = `
       <div class="empty-state mt-8">
@@ -630,7 +678,7 @@ function renderFeedView() {
           Finalize um treino na aba <b>Rastrear</b> para vê-lo aqui.
         </p>
       </div>`;
-    if (window.lucide) window.lucide.createIcons();
+    lucide.createIcons();
     return;
   }
 
@@ -658,14 +706,12 @@ function renderFeedView() {
       </div>`;
     })
     .join("");
-  if (window.lucide) window.lucide.createIcons();
+  lucide.createIcons();
 }
 
 // ======== PROFILE ========
 function renderProfileView() {
   const cont = $("#profile-container");
-  if (!cont) return;
-
   const totalWorkouts = communityFeed.length;
   const totalSets = communityFeed.reduce((acc, w) => {
     return (
@@ -708,11 +754,11 @@ function renderProfileView() {
           : '<p class="text-[11px] text-slate-500">Finalize treinos com séries para ver PRs aqui.</p>'
       }
     </div>`;
-  if (window.lucide) window.lucide.createIcons();
+  lucide.createIcons();
 }
 
 // ======== INIT ========
-function initApp() {
+window.addEventListener("DOMContentLoaded", () => {
   // Tabs
   $$(".tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => openTab(btn.dataset.tab))
@@ -732,19 +778,11 @@ function initApp() {
   if (saveRoutineBtn) saveRoutineBtn.addEventListener("click", saveRoutine);
 
   const deleteRoutineBtn = $("#delete-routine-btn");
-  if (deleteRoutineBtn)
-    deleteRoutineBtn.addEventListener("click", deleteRoutine);
+  if (deleteRoutineBtn) deleteRoutineBtn.addEventListener("click", deleteRoutine);
 
   loadState();
   renderApp();
-}
-
-// garante que o init rode assim que o DOM estiver pronto
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initApp);
-} else {
-  initApp();
-}
+});
 
 // Expor funções usadas em onclick no HTML
 window.openTab = openTab;
@@ -756,3 +794,5 @@ window.removeExerciseFromRoutine = removeExerciseFromRoutine;
 window.saveRoutine = saveRoutine;
 window.deleteRoutine = deleteRoutine;
 window.startWorkoutFromRoutine = startWorkoutFromRoutine;
+window.adjustRest = adjustRest;
+window.skipRest = skipRest;
