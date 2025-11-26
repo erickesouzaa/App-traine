@@ -17,7 +17,11 @@ let exerciseLibraryMode = "active"; // 'active' | 'routine'
 
 const EXERCISE_LIBRARY = [
   { id: "supino_reto", name: "Supino Reto com Barra", group: "Peito" },
-  { id: "supino_inclinado", name: "Supino Inclinado com Halteres", group: "Peito" },
+  {
+    id: "supino_inclinado",
+    name: "Supino Inclinado com Halteres",
+    group: "Peito",
+  },
   { id: "crucifixo_maquina", name: "Crucifixo no Voador", group: "Peito" },
   { id: "flexao", name: "Flexão de Braços", group: "Peito / Tríceps" },
   { id: "agachamento", name: "Agachamento Livre", group: "Pernas" },
@@ -32,7 +36,11 @@ const EXERCISE_LIBRARY = [
   { id: "rosca_martelo", name: "Rosca Martelo", group: "Bíceps" },
   { id: "triceps_corda", name: "Tríceps Corda", group: "Tríceps" },
   { id: "triceps_testa", name: "Tríceps Testa", group: "Tríceps" },
-  { id: "desenvolvimento", name: "Desenvolvimento com Halteres", group: "Ombros" },
+  {
+    id: "desenvolvimento",
+    name: "Desenvolvimento com Halteres",
+    group: "Ombros",
+  },
   { id: "elevacao_lateral", name: "Elevação Lateral", group: "Ombros" },
 ];
 
@@ -97,13 +105,6 @@ function formatDateTime(dateMs) {
   });
 }
 
-// chamar lucide de forma segura
-function refreshIcons() {
-  if (window.lucide && typeof lucide.createIcons === "function") {
-    lucide.createIcons();
-  }
-}
-
 // ======== NAV / RENDER ========
 function renderApp() {
   const loading = $("#loading-state");
@@ -114,7 +115,10 @@ function renderApp() {
 
   renderCurrentView();
   renderFab();
-  refreshIcons();
+
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
 }
 
 function renderCurrentView() {
@@ -122,8 +126,9 @@ function renderCurrentView() {
     btn.classList.toggle("active", btn.dataset.tab === activeTab)
   );
   $$(".view-content").forEach((sec) => sec.classList.add("hidden"));
-  const current = $("#" + activeTab + "-view");
-  if (current) current.classList.remove("hidden");
+
+  const view = $("#" + activeTab + "-view");
+  if (view) view.classList.remove("hidden");
 
   if (activeTab === "today") renderTodayView();
   else if (activeTab === "routines") renderRoutinesView();
@@ -172,7 +177,7 @@ function renderTodayView() {
           <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Exercício
         </button>
       </div>`;
-    refreshIcons();
+    if (window.lucide) window.lucide.createIcons();
     return;
   }
 
@@ -227,7 +232,7 @@ function renderTodayView() {
     </div>
 
     <div>${exHtml}</div>`;
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function startWorkoutIfNeeded() {
@@ -300,6 +305,7 @@ function openLibraryModal(mode) {
 
   const libraryModal = $("#exercise-library-modal");
   const routineModal = $("#routine-modal");
+
   if (!libraryModal) return;
 
   // se vier da rotina, esconde o modal de rotina enquanto a biblioteca está aberta
@@ -311,7 +317,7 @@ function openLibraryModal(mode) {
   renderExerciseList(EXERCISE_LIBRARY);
   const search = $("#exercise-search");
   if (search) search.value = "";
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function closeModal(id) {
@@ -394,7 +400,7 @@ function handleExerciseSearch(e) {
       ex.group.toLowerCase().includes(term)
   );
   renderExerciseList(filtered);
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 // ======== SETS MODAL ========
@@ -408,20 +414,18 @@ function openSetsModal(exerciseId) {
   const info = $("#sets-exercise-info");
   const weightInput = $("#set-weight-input");
   const repsInput = $("#set-reps-input");
+  const modal = $("#sets-modal");
 
   if (title) title.textContent = ex.name;
   if (info)
     info.textContent = "Registre peso e repetições para cada série.";
-
   if (weightInput)
     weightInput.value = ex.sets?.[ex.sets.length - 1]?.weight || 10;
-  if (repsInput)
-    repsInput.value = ex.sets?.[ex.sets.length - 1]?.reps || 10;
+  if (repsInput) repsInput.value = ex.sets?.[ex.sets.length - 1]?.reps || 10;
 
   renderSetsTable(ex);
-  const modal = $("#sets-modal");
   if (modal) modal.classList.add("show");
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function renderSetsTable(ex) {
@@ -450,10 +454,8 @@ function addSetToCurrentExercise() {
   const ex = activeWorkout.exercises.find((e) => e.id === setsExerciseId);
   if (!ex) return;
 
-  const weightInput = $("#set-weight-input");
-  const repsInput = $("#set-reps-input");
-  const weight = parseFloat(weightInput?.value || "0") || 0;
-  const reps = parseInt(repsInput?.value || "0") || 0;
+  const weight = parseFloat($("#set-weight-input")?.value) || 0;
+  const reps = parseInt($("#set-reps-input")?.value) || 0;
   if (!weight || !reps) {
     alert("Informe peso e repetições válidos.");
     return;
@@ -478,7 +480,7 @@ function renderRoutinesView() {
         <p class="mb-1">Você ainda não tem rotinas salvas.</p>
         <p class="text-[11px] text-slate-500">Use o botão flutuante para criar a primeira.</p>
       </div>`;
-    refreshIcons();
+    if (window.lucide) window.lucide.createIcons();
     return;
   }
 
@@ -506,14 +508,15 @@ function renderRoutinesView() {
     </div>`
     )
     .join("");
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function openRoutineModal(routineId) {
+  const modal = $("#routine-modal");
   const title = $("#routine-modal-title");
   const deleteBtn = $("#delete-routine-btn");
   const nameInput = $("#routine-name-input");
-  const modal = $("#routine-modal");
+
   if (!modal || !title || !nameInput) return;
 
   if (routineId) {
@@ -530,7 +533,7 @@ function openRoutineModal(routineId) {
   nameInput.value = currentRoutine.name || "";
   renderRoutineModalContent();
   modal.classList.add("show");
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function renderRoutineModalContent() {
@@ -567,7 +570,9 @@ function removeExerciseFromRoutine(exId) {
 function saveRoutine() {
   if (!currentRoutine) return;
   const nameInput = $("#routine-name-input");
-  const name = nameInput ? nameInput.value.trim() : "";
+  if (!nameInput) return;
+
+  const name = nameInput.value.trim();
   if (name.length < 3) {
     alert("O nome da rotina deve ter pelo menos 3 caracteres.");
     return;
@@ -625,7 +630,7 @@ function renderFeedView() {
           Finalize um treino na aba <b>Rastrear</b> para vê-lo aqui.
         </p>
       </div>`;
-    refreshIcons();
+    if (window.lucide) window.lucide.createIcons();
     return;
   }
 
@@ -653,7 +658,7 @@ function renderFeedView() {
       </div>`;
     })
     .join("");
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 // ======== PROFILE ========
@@ -703,11 +708,11 @@ function renderProfileView() {
           : '<p class="text-[11px] text-slate-500">Finalize treinos com séries para ver PRs aqui.</p>'
       }
     </div>`;
-  refreshIcons();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 // ======== INIT ========
-window.addEventListener("DOMContentLoaded", () => {
+function initApp() {
   // Tabs
   $$(".tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => openTab(btn.dataset.tab))
@@ -727,11 +732,19 @@ window.addEventListener("DOMContentLoaded", () => {
   if (saveRoutineBtn) saveRoutineBtn.addEventListener("click", saveRoutine);
 
   const deleteRoutineBtn = $("#delete-routine-btn");
-  if (deleteRoutineBtn) deleteRoutineBtn.addEventListener("click", deleteRoutine);
+  if (deleteRoutineBtn)
+    deleteRoutineBtn.addEventListener("click", deleteRoutine);
 
   loadState();
   renderApp();
-});
+}
+
+// garante que o init rode assim que o DOM estiver pronto
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
 
 // Expor funções usadas em onclick no HTML
 window.openTab = openTab;
