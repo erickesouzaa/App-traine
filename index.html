@@ -1,178 +1,210 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tracker de Treino - Offline</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracker de Treino - Offline</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body class="bg-slate-950">
-  <div class="app-shell min-h-screen flex flex-col">
-    <!-- HEADER -->
-    <header class="px-4 pt-4 pb-2 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/80 backdrop-blur z-20">
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/50">
-          <i data-lucide="dumbbell" class="w-4 h-4 text-blue-400"></i>
-        </span>
-        <div>
-          <p class="text-xs uppercase tracking-widest text-slate-400">Tracker de Treino</p>
-          <h1 class="text-base font-semibold text-slate-100">Clonagem Hevy (Offline)</h1>
+    <!-- Ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-slate-950">
+    <div class="app-shell min-h-screen flex flex-col">
+      <!-- HEADER -->
+      <header
+        class="px-4 pt-4 pb-2 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/80 backdrop-blur z-20"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/50"
+          >
+            <i data-lucide="dumbbell" class="w-4 h-4 text-blue-400"></i>
+          </span>
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-400">
+              Tracker de Treino
+            </p>
+            <h1 class="text-base font-semibold text-slate-100">
+              Clonagem Hevy (Offline)
+            </h1>
+          </div>
         </div>
+        <button
+          class="rounded-full p-2 border border-slate-700/70 hover:border-slate-500"
+        >
+          <i data-lucide="user" class="w-4 h-4 text-slate-300"></i>
+        </button>
+      </header>
+
+      <!-- MAIN CONTENT -->
+      <main
+        id="app-content"
+        class="flex-1 hidden px-4 py-4 space-y-4 pb-24"
+      >
+        <!-- TODAY -->
+        <section id="today-view" class="view-content space-y-3">
+          <div id="today-container"></div>
+        </section>
+
+        <!-- ROUTINES -->
+        <section id="routines-view" class="view-content hidden space-y-3">
+          <div id="routines-container"></div>
+        </section>
+
+        <!-- FEED -->
+        <section id="feed-view" class="view-content hidden space-y-3">
+          <div id="feed-container"></div>
+        </section>
+
+        <!-- PROFILE -->
+        <section id="profile-view" class="view-content hidden space-y-3">
+          <div id="profile-container"></div>
+        </section>
+      </main>
+
+      <!-- LOADING -->
+      <div
+        id="loading-state"
+        class="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm gap-3"
+      >
+        <div
+          class="w-9 h-9 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin"
+        ></div>
+        <p>A carregar o app e sincronizar dados...</p>
       </div>
-      <button class="rounded-full p-2 border border-slate-700/70 hover:border-slate-500">
-        <i data-lucide="user" class="w-4 h-4 text-slate-300"></i>
+    </div>
+
+    <!-- NAV INFERIOR -->
+    <nav
+      class="fixed bottom-0 left-0 right-0 px-4 pt-2 pb-3 flex items-center justify-between text-xs font-medium text-slate-400 border-t border-slate-800/70 bg-slate-950/95 backdrop-blur z-30"
+    >
+      <button
+        class="tab-btn active flex-1 flex flex-col items-center gap-1 pb-1"
+        data-tab="today"
+      >
+        <i data-lucide="play-circle" class="w-4 h-4"></i>
+        <span>Rastrear</span>
       </button>
-    </header>
+      <button
+        class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1"
+        data-tab="routines"
+      >
+        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+        <span>Rotinas</span>
+      </button>
+      <button
+        class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1"
+        data-tab="feed"
+      >
+        <i data-lucide="activity" class="w-4 h-4"></i>
+        <span>Feed</span>
+      </button>
+      <button
+        class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1"
+        data-tab="profile"
+      >
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+        <span>Perfil</span>
+      </button>
+    </nav>
 
-    <!-- MAIN CONTENT -->
-    <main id="app-content" class="flex-1 hidden px-4 py-4 space-y-4 pb-24">
-      <section id="today-view" class="view-content space-y-3">
-        <div id="today-container"></div>
-      </section>
+    <!-- BARRA DE ERRO CRÍTICO -->
+    <div
+      id="critical-error-bar"
+      class="fixed top-0 left-0 right-0 bg-red-700 text-white text-xs text-center py-1 hidden z-50"
+    ></div>
 
-      <section id="routines-view" class="view-content hidden space-y-3">
-        <div id="routines-container"></div>
-      </section>
-
-      <section id="feed-view" class="view-content hidden space-y-3">
-        <div id="feed-container"></div>
-      </section>
-
-      <section id="profile-view" class="view-content hidden space-y-3">
-        <div id="profile-container"></div>
-      </section>
-    </main>
-
-    <!-- LOADING -->
-    <div id="loading-state" class="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm gap-3">
-      <div class="w-9 h-9 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin"></div>
-      <p>A carregar o app e sincronizar dados...</p>
+    <!-- FAB -->
+    <div id="fab-container" class="fab-wrapper">
+      <button id="fab-button" class="fab bg-blue-600 text-white"></button>
     </div>
-  </div>
 
-  <!-- NAV INFERIOR -->
-  <nav class="fixed bottom-0 left-0 right-0 px-4 pt-2 pb-3 flex items-center justify-between text-xs font-medium text-slate-400 border-t border-slate-800/70 bg-slate-950/95 backdrop-blur z-30">
-    <button class="tab-btn active flex-1 flex flex-col items-center gap-1 pb-1" data-tab="today">
-      <i data-lucide="play-circle" class="w-4 h-4"></i>
-      <span>Rastrear</span>
-    </button>
-    <button class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1" data-tab="routines">
-      <i data-lucide="clipboard-list" class="w-4 h-4"></i>
-      <span>Rotinas</span>
-    </button>
-    <button class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1" data-tab="feed">
-      <i data-lucide="activity" class="w-4 h-4"></i>
-      <span>Feed</span>
-    </button>
-    <button class="tab-btn flex-1 flex flex-col items-center gap-1 pb-1" data-tab="profile">
-      <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-      <span>Perfil</span>
-    </button>
-  </nav>
-
-  <!-- BARRA DE ERRO CRÍTICO -->
-  <div id="critical-error-bar" class="fixed top-0 left-0 right-0 bg-red-700 text-white text-xs text-center py-1 hidden z-50"></div>
-
-  <!-- FAB -->
-  <div id="fab-container" class="fab-wrapper">
-    <button id="fab-button" class="fab bg-blue-600 text-white"></button>
-  </div>
-
-  <!-- MODAL: BIBLIOTECA -->
-  <div id="exercise-library-modal" class="modal-backdrop z-40">
-    <div class="modal-panel">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-sm font-semibold text-slate-100">Biblioteca de Exercícios</h2>
-        <button onclick="closeModal('exercise-library-modal')" class="p-1 rounded-full hover:bg-slate-800">
-          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
-        </button>
-      </div>
-      <input id="exercise-search" class="input-dark mb-3" placeholder="Buscar (ex: Supino, Agachamento...)" />
-      <div id="exercise-list" class="space-y-2 text-sm"></div>
-    </div>
-  </div>
-
-  <!-- MODAL: SÉRIES -->
-  <div id="sets-modal" class="modal-backdrop z-40">
-    <div class="modal-panel">
-      <div class="flex items-center justify-between mb-2">
-        <h2 id="sets-modal-title" class="text-sm font-semibold text-slate-100">Exercício</h2>
-        <button onclick="closeModal('sets-modal')" class="p-1 rounded-full hover:bg-slate-800">
-          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
-        </button>
-      </div>
-
-      <div id="sets-exercise-info" class="text-xs text-slate-400 mb-3">
-        Registre peso, repetições e descanso para cada série.
-      </div>
-
-      <div class="card p-3 mb-3">
-        <p class="text-xs font-semibold text-slate-300 mb-2">Registrar nova série</p>
-
-        <div class="grid grid-cols-3 gap-2 mb-2">
-          <div>
-            <p class="text-[11px] text-slate-400 mb-1">Peso (kg)</p>
-            <input id="set-weight-input" type="number" min="0" class="input-dark" placeholder="Kg" value="10" />
-          </div>
-          <div>
-            <p class="text-[11px] text-slate-400 mb-1">Reps</p>
-            <input id="set-reps-input" type="number" min="1" class="input-dark" placeholder="Reps" value="10" />
-          </div>
-          <div>
-            <p class="text-[11px] text-slate-400 mb-1">Descanso (s)</p>
-            <input id="set-rest-input" type="number" min="0" class="input-dark" placeholder="Segundos" value="60" />
-          </div>
-        </div>
-
-        <button id="add-set-btn" class="btn-primary w-full">Adicionar série</button>
-        <p id="rest-timer-display" class="text-[11px] text-slate-400 mt-2 hidden"></p>
-      </div>
-
-      <div class="card p-3">
-        <p class="text-xs font-semibold text-slate-300 mb-2">Séries registradas</p>
-        <div id="sets-table" class="space-y-1 text-xs"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: ROTINA -->
-  <div id="routine-modal" class="modal-backdrop z-40">
-    <div class="modal-panel">
-      <div class="flex items-center justify-between mb-2">
-        <h2 id="routine-modal-title" class="text-sm font-semibold text-slate-100">Nova Rotina</h2>
-        <button onclick="closeModal('routine-modal')" class="p-1 rounded-full hover:bg-slate-800">
-          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
-        </button>
-      </div>
-
-      <div class="space-y-2 mb-3">
-        <label class="text-xs text-slate-400">Nome da rotina</label>
-        <input id="routine-name-input" class="input-dark" placeholder="Ex: Treino A - Peito / Tríceps" />
-      </div>
-
-      <div class="space-y-2 mb-3">
-        <div class="flex items-center justify-between">
-          <p class="text-xs font-semibold text-slate-300">Exercícios da rotina</p>
-          <button onclick="openLibraryModal('routine')" class="btn-primary text-xs px-2 py-1">
-            <i data-lucide="plus" class="w-3 h-3"></i> Exercício
+    <!-- MODAL: BIBLIOTECA DE EXERCÍCIOS -->
+    <div id="exercise-library-modal" class="modal-backdrop z-40">
+      <div class="modal-panel">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-semibold text-slate-100">
+            Biblioteca de Exercícios
+          </h2>
+          <button
+            onclick="closeModal('exercise-library-modal')"
+            class="p-1 rounded-full hover:bg-slate-800"
+          >
+            <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
           </button>
         </div>
-        <div id="routine-exercises-list" class="space-y-1 text-xs"></div>
-      </div>
-
-      <div class="flex gap-2 mt-4">
-        <button id="save-routine-btn" class="btn-primary flex-1">Salvar rotina</button>
-        <button id="delete-routine-btn" class="flex-1 text-xs font-semibold text-red-400 border border-red-500/60 rounded-full px-3 py-2 hidden">
-          Apagar
-        </button>
+        <input
+          id="exercise-search"
+          class="input-dark mb-3"
+          placeholder="Buscar (ex: Supino, Agachamento...)"
+        />
+        <div id="exercise-list" class="space-y-2 text-sm"></div>
       </div>
     </div>
-  </div>
 
-  <script src="app.js" defer></script>
-</body>
+    <!-- MODAL: CRIAR / EDITAR ROTINA -->
+    <div id="routine-modal" class="modal-backdrop z-40">
+      <div class="modal-panel">
+        <div class="flex items-center justify-between mb-2">
+          <h2
+            id="routine-modal-title"
+            class="text-sm font-semibold text-slate-100"
+          >
+            Nova Rotina
+          </h2>
+          <button
+            onclick="closeModal('routine-modal')"
+            class="p-1 rounded-full hover:bg-slate-800"
+          >
+            <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+          </button>
+        </div>
+
+        <div class="space-y-2 mb-3">
+          <label class="text-xs text-slate-400">Nome da rotina</label>
+          <input
+            id="routine-name-input"
+            class="input-dark"
+            placeholder="Ex: Treino A - Peito / Tríceps"
+          />
+        </div>
+
+        <div class="space-y-2 mb-3">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-slate-300">
+              Exercícios da rotina
+            </p>
+            <button
+              onclick="openLibraryModal('routine')"
+              class="btn-primary text-xs px-2 py-1"
+            >
+              <i data-lucide="plus" class="w-3 h-3"></i> Exercício
+            </button>
+          </div>
+          <div id="routine-exercises-list" class="space-y-1 text-xs"></div>
+        </div>
+
+        <div class="flex gap-2 mt-4">
+          <button id="save-routine-btn" class="btn-primary flex-1">
+            Salvar Rotina
+          </button>
+          <button
+            id="delete-routine-btn"
+            class="flex-1 text-xs font-semibold text-red-400 border border-red-500/60 rounded-full px-3 py-2 hidden"
+          >
+            Apagar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LÓGICA -->
+    <script src="app.js" defer></script>
+  </body>
 </html>
