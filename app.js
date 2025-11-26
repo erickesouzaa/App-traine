@@ -11,11 +11,9 @@ let activeWorkout = null;
 let routines = [];
 let communityFeed = [];
 let personalRecords = [];
-let currentRoutine = null;      // rotina sendo editada
+let currentRoutine = null; // rotina sendo editada
+let setsExerciseId = null; // exercício aberto no modal de sets
 let exerciseLibraryMode = "active"; // 'active' | 'routine'
-
-// timer de descanso (não é salvo no localStorage)
-let restTimer = null;
 
 const EXERCISE_LIBRARY = [
   { id: "supino_reto", name: "Supino Reto com Barra", group: "Peito" },
@@ -44,6 +42,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 function showCriticalError(msg) {
   const bar = $("#critical-error-bar");
+  if (!bar) return;
   bar.textContent = msg;
   bar.classList.remove("hidden");
 }
@@ -59,11 +58,6 @@ function loadState() {
     routines = rt ? JSON.parse(rt) : [];
     communityFeed = fd ? JSON.parse(fd) : [];
     personalRecords = pr ? JSON.parse(pr) : [];
-
-    // compatibilidade: garante índice de exercício atual
-    if (activeWorkout && typeof activeWorkout.currentExerciseIndex !== "number") {
-      activeWorkout.currentExerciseIndex = 0;
-    }
   } catch (e) {
     console.error("Erro ao carregar estado:", e);
     showCriticalError("Erro ao ler dados locais (localStorage).");
@@ -103,20 +97,24 @@ function formatDateTime(dateMs) {
   });
 }
 
-function formatSeconds(sec) {
-  const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m.toString().padStart(2, "0")}:${r.toString().padStart(2, "0")}`;
+// chamar lucide de forma segura
+function refreshIcons() {
+  if (window.lucide && typeof lucide.createIcons === "function") {
+    lucide.createIcons();
+  }
 }
 
 // ======== NAV / RENDER ========
 function renderApp() {
-  $("#loading-state").classList.add("hidden");
-  $("#app-content").classList.remove("hidden");
+  const loading = $("#loading-state");
+  const appContent = $("#app-content");
+
+  if (loading) loading.classList.add("hidden");
+  if (appContent) appContent.classList.remove("hidden");
+
   renderCurrentView();
   renderFab();
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function renderCurrentView() {
@@ -124,7 +122,8 @@ function renderCurrentView() {
     btn.classList.toggle("active", btn.dataset.tab === activeTab)
   );
   $$(".view-content").forEach((sec) => sec.classList.add("hidden"));
-  $("#" + activeTab + "-view").classList.remove("hidden");
+  const current = $("#" + activeTab + "-view");
+  if (current) current.classList.remove("hidden");
 
   if (activeTab === "today") renderTodayView();
   else if (activeTab === "routines") renderRoutinesView();
@@ -141,6 +140,7 @@ function openTab(tab) {
 function renderFab() {
   const fab = $("#fab-button");
   const wrapper = $("#fab-container");
+  if (!fab || !wrapper) return;
 
   if (activeTab === "today" && activeWorkout) {
     fab.textContent = "FINALIZAR TREINO";
@@ -157,23 +157,22 @@ function renderFab() {
   }
 }
 
-// ======== TODAY VIEW (treino em andamento) ========
+// ======== TODAY VIEW ========
 function renderTodayView() {
   const cont = $("#today-container");
+  if (!cont) return;
 
-  if (!activeWorkout || !activeWorkout.exercises.length) {
+  if (!activeWorkout) {
     cont.innerHTML = `
       <div class="empty-state mt-10">
         <i data-lucide="dumbbell" class="w-8 h-8 mx-auto mb-3 text-slate-500"></i>
         <p class="mb-1">Não há treino em andamento.</p>
-        <p class="text-xs mb-4 text-slate-500">
-          Comece um novo treino adicionando o primeiro exercício.
-        </p>
+        <p class="text-xs mb-4 text-slate-500">Comece um novo treino adicionando o primeiro exercício.</p>
         <button class="btn-primary" onclick="openLibraryModal('active')">
           <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Exercício
         </button>
       </div>`;
-    lucide.createIcons();
+    refreshIcons();
     return;
   }
 
@@ -181,59 +180,37 @@ function renderTodayView() {
     ? formatTime(activeWorkout.startedAt)
     : "—";
 
-  const totalExercises = activeWorkout.exercises.length;
-  const exIndex =
-    typeof activeWorkout.currentExerciseIndex === "number"
-      ? activeWorkout.currentExerciseIndex
-      : 0;
-
-  const ex = activeWorkout.exercises[exIndex];
-
-  // fallback de dados (compatibilidade)
-  const targetSets = ex.targetSets || ex.setsTarget || 3;
-  const performedSets = Array.isArray(ex.sets) ? ex.sets.length : 0;
-  const lastSet = ex.sets && ex.sets[ex.sets.length - 1];
-
-  const defaultWeight = lastSet?.weight ?? ex.defaultWeight ?? 10;
-  const defaultReps = lastSet?.reps ?? ex.defaultReps ?? 10;
-  const defaultRest = ex.restSeconds ?? 60;
-
-  const restState = activeWorkout.rest || null;
-  const isResting =
-    restState &&
-    restState.isResting &&
-    restState.exerciseId === ex.id &&
-    restState.remainingSeconds > 0;
-
-  const restLabel = isResting
-    ? `Descanso: ${formatSeconds(restState.remainingSeconds)}`
-    : `Descanso padrão: ${defaultRest}s`;
-
-  const setsListHtml =
-    ex.sets && ex.sets.length
-      ? ex.sets
-          .map(
-            (s, idx) => `
-        <div class="flex justify-between items-center px-2 py-1 rounded-md bg-slate-900/70 mb-1">
-          <span class="text-[11px] text-slate-400">Série ${idx + 1}</span>
-          <span class="text-[11px] text-slate-200 font-semibold">${s.weight} kg x ${
-              s.reps
-            } reps</span>
-        </div>`
-          )
+  const exHtml =
+    activeWorkout.exercises && activeWorkout.exercises.length
+      ? activeWorkout.exercises
+          .map((ex) => {
+            const sets = Array.isArray(ex.sets) ? ex.sets.length : 0;
+            return `
+          <div class="card p-3 mb-2 cursor-pointer hover:bg-slate-900"
+               onclick="openSetsModal('${ex.id}')">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <i data-lucide="barbell" class="w-5 h-5 text-yellow-400"></i>
+                <div>
+                  <p class="text-sm font-semibold">${ex.name}</p>
+                  <p class="text-[11px] text-slate-400">${sets} série(s)</p>
+                </div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+            </div>
+          </div>`;
+          })
           .join("")
-      : '<p class="text-[11px] text-slate-500">Nenhuma série registrada ainda.</p>';
+      : `<div class="empty-state mt-3 text-xs">
+          Nenhum exercício ainda. Toque em <b>Adicionar Exercício</b> para começar.
+        </div>`;
 
   cont.innerHTML = `
     <div class="card mb-3">
       <div class="card-header">
         <div>
           <div class="card-title text-blue-300">Treino Ativo</div>
-          <p class="text-[11px] text-blue-400">
-            Iniciado às ${startedAtLabel} • Exercício ${exIndex + 1} de ${
-    totalExercises
-  }
-          </p>
+          <p class="text-[11px] text-blue-400">Iniciado às ${startedAtLabel}</p>
         </div>
         <button class="text-[11px] text-slate-300 border border-slate-600 rounded-full px-2 py-1"
                 onclick="cancelWorkout()" title="Apagar treino atual">
@@ -242,80 +219,15 @@ function renderTodayView() {
       </div>
     </div>
 
-    <div class="card p-3 mb-3">
-      <div class="flex justify-between items-center mb-2">
-        <div>
-          <p class="text-xs text-slate-400 mb-1">Exercício atual</p>
-          <p class="text-sm font-semibold text-slate-100">${ex.name}</p>
-          <p class="text-[11px] text-slate-400">
-            Série ${performedSets + 1} de ${targetSets}
-          </p>
-        </div>
-        <div class="flex gap-2">
-          <button class="nav-ex-btn" onclick="changeExercise(-1)" ${
-            exIndex === 0 ? "disabled" : ""
-          }>
-            <i data-lucide="chevron-left" class="w-4 h-4"></i>
-          </button>
-          <button class="nav-ex-btn" onclick="changeExercise(1)" ${
-            exIndex >= totalExercises - 1 ? "disabled" : ""
-          }>
-            <i data-lucide="chevron-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <p class="text-[11px] text-slate-400 mb-1">${restLabel}</p>
-        ${
-          isResting
-            ? `
-          <div class="flex items-center gap-2">
-            <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-blue-500"
-                   style="width:${(
-                     (restState.remainingSeconds / restState.totalSeconds) *
-                     100
-                   ).toFixed(0)}%"></div>
-            </div>
-            <button class="text-[11px] px-2 py-1 rounded-full border border-slate-600 text-slate-200"
-                    onclick="skipRest()">Pular</button>
-          </div>`
-            : `<p class="text-[11px] text-emerald-400">Pronto para a próxima série.</p>`
-        }
-      </div>
-
-      <div class="space-y-2">
-        <p class="text-xs font-semibold text-slate-300">Registrar nova série</p>
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="text-[11px] text-slate-400">Peso (kg)</label>
-            <input id="set-weight-input" type="number" min="0" class="input-dark mt-1" value="${defaultWeight}" />
-          </div>
-          <div>
-            <label class="text-[11px] text-slate-400">Reps</label>
-            <input id="set-reps-input" type="number" min="1" class="input-dark mt-1" value="${defaultReps}" />
-          </div>
-          <div>
-            <label class="text-[11px] text-slate-400">Descanso (s)</label>
-            <input id="set-rest-input" type="number" min="0" class="input-dark mt-1" value="${defaultRest}" />
-          </div>
-        </div>
-
-        <button class="btn-primary w-full mt-2" onclick="completeSet()"
-          ${isResting ? "disabled" : ""}>
-          Concluir série
-        </button>
-      </div>
+    <div class="flex justify-between items-center mb-2">
+      <p class="text-xs font-semibold text-slate-300 uppercase tracking-wide">Exercícios</p>
+      <button class="btn-primary text-[11px] px-2 py-1" onclick="openLibraryModal('active')">
+        <i data-lucide="plus" class="w-3 h-3"></i> Exercício
+      </button>
     </div>
 
-    <div class="card p-3">
-      <p class="text-xs font-semibold text-slate-300 mb-2">Séries registradas</p>
-      <div id="sets-table">${setsListHtml}</div>
-    </div>
-  `;
-
-  lucide.createIcons();
+    <div>${exHtml}</div>`;
+  refreshIcons();
 }
 
 function startWorkoutIfNeeded() {
@@ -325,18 +237,12 @@ function startWorkoutIfNeeded() {
       name: "Treino de " + new Date().toLocaleDateString("pt-BR"),
       startedAt: Date.now(),
       exercises: [],
-      currentExerciseIndex: 0,
-      rest: null,
     };
-  } else if (typeof activeWorkout.currentExerciseIndex !== "number") {
-    activeWorkout.currentExerciseIndex = 0;
   }
 }
 
 function cancelWorkout() {
   if (confirm("Cancelar e apagar o treino atual?")) {
-    if (restTimer) clearInterval(restTimer);
-    restTimer = null;
     activeWorkout = null;
     saveState();
     renderApp();
@@ -345,15 +251,7 @@ function cancelWorkout() {
 
 function finishWorkout() {
   if (!activeWorkout || !activeWorkout.exercises.length) {
-    alert("Adicione pelo menos um exercício antes de finalizar.");
-    return;
-  }
-
-  const hasAnySet = activeWorkout.exercises.some(
-    (ex) => Array.isArray(ex.sets) && ex.sets.length
-  );
-  if (!hasAnySet) {
-    alert("Registre pelo menos uma série antes de finalizar.");
+    alert("Adicione pelo menos um exercício e uma série antes de finalizar.");
     return;
   }
 
@@ -389,8 +287,6 @@ function finishWorkout() {
   communityFeed.unshift(workout);
   if (communityFeed.length > 20) communityFeed.pop();
 
-  if (restTimer) clearInterval(restTimer);
-  restTimer = null;
   activeWorkout = null;
   saveState();
   alert("Treino finalizado!");
@@ -398,126 +294,15 @@ function finishWorkout() {
   renderApp();
 }
 
-// ======== DESCANSO / TIMER ========
-function startRest(exerciseId, seconds) {
-  if (restTimer) clearInterval(restTimer);
-  restTimer = null;
-
-  if (!activeWorkout) return;
-  if (!seconds || seconds <= 0) {
-    advanceAfterRest();
-    return;
-  }
-
-  activeWorkout.rest = {
-    exerciseId,
-    totalSeconds: seconds,
-    remainingSeconds: seconds,
-    isResting: true,
-  };
-  saveState();
-  renderTodayView();
-
-  restTimer = setInterval(() => {
-    if (!activeWorkout || !activeWorkout.rest) {
-      clearInterval(restTimer);
-      restTimer = null;
-      return;
-    }
-    activeWorkout.rest.remainingSeconds -= 1;
-    if (activeWorkout.rest.remainingSeconds <= 0) {
-      clearInterval(restTimer);
-      restTimer = null;
-      activeWorkout.rest.isResting = false;
-      activeWorkout.rest.remainingSeconds = 0;
-      saveState();
-      alert("Tempo de descanso terminou! Bora para a próxima série.");
-      advanceAfterRest();
-    } else {
-      renderTodayView();
-    }
-  }, 1000);
-}
-
-function skipRest() {
-  if (!activeWorkout || !activeWorkout.rest) return;
-  if (restTimer) clearInterval(restTimer);
-  restTimer = null;
-  activeWorkout.rest.isResting = false;
-  activeWorkout.rest.remainingSeconds = 0;
-  saveState();
-  advanceAfterRest();
-}
-
-function advanceAfterRest() {
-  if (!activeWorkout) return;
-  const idx = activeWorkout.currentExerciseIndex || 0;
-  const ex = activeWorkout.exercises[idx];
-  if (!ex) return;
-
-  const doneSets = ex.sets ? ex.sets.length : 0;
-  const target = ex.targetSets || ex.setsTarget || 3;
-
-  if (doneSets < target) {
-    // continua no mesmo exercício, próxima série
-    activeWorkout.rest = null;
-  } else {
-    // passa para próximo exercício se existir
-    if (idx < activeWorkout.exercises.length - 1) {
-      activeWorkout.currentExerciseIndex = idx + 1;
-    }
-    activeWorkout.rest = null;
-  }
-  saveState();
-  renderTodayView();
-}
-
-// registra série a partir dos inputs do exercício atual
-function completeSet() {
-  if (!activeWorkout) return;
-  const idx = activeWorkout.currentExerciseIndex || 0;
-  const ex = activeWorkout.exercises[idx];
-  if (!ex) return;
-
-  const weight = parseFloat($("#set-weight-input").value) || 0;
-  const reps = parseInt($("#set-reps-input").value) || 0;
-  const rest = parseInt($("#set-rest-input").value) || 0;
-
-  if (!weight || !reps) {
-    alert("Informe peso e repetições válidos.");
-    return;
-  }
-
-  ex.sets = ex.sets || [];
-  ex.sets.push({ weight, reps, restSeconds: rest, ts: Date.now() });
-
-  // salva padrões para próximas séries
-  ex.defaultWeight = weight;
-  ex.defaultReps = reps;
-  ex.restSeconds = rest;
-
-  saveState();
-  startRest(ex.id, rest);
-}
-
-// mudar exercício (setas esquerda/direita)
-function changeExercise(delta) {
-  if (!activeWorkout) return;
-  const total = activeWorkout.exercises.length;
-  let idx = activeWorkout.currentExerciseIndex || 0;
-  idx = Math.min(Math.max(idx + delta, 0), total - 1);
-  activeWorkout.currentExerciseIndex = idx;
-  saveState();
-  renderTodayView();
-}
-
-// ======== BIBLIOTECA DE EXERCÍCIOS ========
+// ======== EXERCISE LIBRARY / ACTIVE WORKOUT ========
 function openLibraryModal(mode) {
   exerciseLibraryMode = mode || "active"; // 'active' ou 'routine'
 
   const libraryModal = $("#exercise-library-modal");
   const routineModal = $("#routine-modal");
+  if (!libraryModal) return;
 
+  // se vier da rotina, esconde o modal de rotina enquanto a biblioteca está aberta
   if (exerciseLibraryMode === "routine" && routineModal) {
     routineModal.classList.remove("show");
   }
@@ -526,7 +311,7 @@ function openLibraryModal(mode) {
   renderExerciseList(EXERCISE_LIBRARY);
   const search = $("#exercise-search");
   if (search) search.value = "";
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function closeModal(id) {
@@ -535,6 +320,7 @@ function closeModal(id) {
 
   modal.classList.remove("show");
 
+  // se fechou a biblioteca e ela estava em modo "routine", volta com o modal de rotina
   if (id === "exercise-library-modal" && exerciseLibraryMode === "routine") {
     const routineModal = $("#routine-modal");
     if (routineModal) {
@@ -545,6 +331,8 @@ function closeModal(id) {
 
 function renderExerciseList(listData) {
   const list = $("#exercise-list");
+  if (!list) return;
+
   if (!listData.length) {
     list.innerHTML =
       '<p class="text-[11px] text-slate-500">Nenhum exercício encontrado.</p>';
@@ -571,28 +359,19 @@ function selectExerciseFromLibrary(exId) {
 
   if (exerciseLibraryMode === "active") {
     startWorkoutIfNeeded();
-    if (!Array.isArray(activeWorkout.exercises)) {
-      activeWorkout.exercises = [];
-    }
     if (activeWorkout.exercises.find((e) => e.id === exBase.id)) {
       alert("Esse exercício já está no treino.");
     } else {
       activeWorkout.exercises.push({
         id: exBase.id,
         name: exBase.name,
-        targetSets: 3,
-        defaultWeight: 10,
-        defaultReps: 10,
-        restSeconds: 60,
         sets: [],
       });
-      if (typeof activeWorkout.currentExerciseIndex !== "number") {
-        activeWorkout.currentExerciseIndex = 0;
-      }
       saveState();
     }
     closeModal("exercise-library-modal");
     renderApp();
+    openSetsModal(exBase.id);
   } else if (exerciseLibraryMode === "routine" && currentRoutine) {
     if (currentRoutine.exercises.find((e) => e.id === exBase.id)) {
       alert("Esse exercício já está na rotina.");
@@ -600,10 +379,6 @@ function selectExerciseFromLibrary(exId) {
       currentRoutine.exercises.push({
         id: exBase.id,
         name: exBase.name,
-        targetSets: 3,
-        defaultWeight: 10,
-        defaultReps: 10,
-        restSeconds: 60,
       });
       renderRoutineModalContent();
     }
@@ -619,20 +394,91 @@ function handleExerciseSearch(e) {
       ex.group.toLowerCase().includes(term)
   );
   renderExerciseList(filtered);
-  lucide.createIcons();
+  refreshIcons();
 }
 
-// ======== ROTINAS ========
+// ======== SETS MODAL ========
+function openSetsModal(exerciseId) {
+  if (!activeWorkout) return;
+  const ex = activeWorkout.exercises.find((e) => e.id === exerciseId);
+  if (!ex) return;
+
+  setsExerciseId = exerciseId;
+  const title = $("#sets-modal-title");
+  const info = $("#sets-exercise-info");
+  const weightInput = $("#set-weight-input");
+  const repsInput = $("#set-reps-input");
+
+  if (title) title.textContent = ex.name;
+  if (info)
+    info.textContent = "Registre peso e repetições para cada série.";
+
+  if (weightInput)
+    weightInput.value = ex.sets?.[ex.sets.length - 1]?.weight || 10;
+  if (repsInput)
+    repsInput.value = ex.sets?.[ex.sets.length - 1]?.reps || 10;
+
+  renderSetsTable(ex);
+  const modal = $("#sets-modal");
+  if (modal) modal.classList.add("show");
+  refreshIcons();
+}
+
+function renderSetsTable(ex) {
+  const cont = $("#sets-table");
+  if (!cont) return;
+
+  const sets = Array.isArray(ex.sets) ? ex.sets : [];
+  if (!sets.length) {
+    cont.innerHTML =
+      '<p class="text-[11px] text-slate-500">Nenhuma série registrada ainda.</p>';
+    return;
+  }
+  cont.innerHTML = sets
+    .map(
+      (s, idx) => `
+    <div class="flex justify-between items-center px-2 py-1 rounded-md bg-slate-900/70 mb-1">
+      <span class="text-[11px] text-slate-400">Série ${idx + 1}</span>
+      <span class="text-[11px] text-slate-200 font-semibold">${s.weight} kg x ${s.reps} reps</span>
+    </div>`
+    )
+    .join("");
+}
+
+function addSetToCurrentExercise() {
+  if (!activeWorkout || !setsExerciseId) return;
+  const ex = activeWorkout.exercises.find((e) => e.id === setsExerciseId);
+  if (!ex) return;
+
+  const weightInput = $("#set-weight-input");
+  const repsInput = $("#set-reps-input");
+  const weight = parseFloat(weightInput?.value || "0") || 0;
+  const reps = parseInt(repsInput?.value || "0") || 0;
+  if (!weight || !reps) {
+    alert("Informe peso e repetições válidos.");
+    return;
+  }
+
+  ex.sets = ex.sets || [];
+  ex.sets.push({ weight, reps, ts: Date.now() });
+  saveState();
+  renderSetsTable(ex);
+  renderTodayView();
+}
+
+// ======== ROUTINES ========
 function renderRoutinesView() {
   const cont = $("#routines-container");
+  if (!cont) return;
+
   if (!routines.length) {
     cont.innerHTML = `
       <div class="empty-state mt-8">
         <i data-lucide="clipboard-list" class="w-8 h-8 mx-auto mb-3 text-slate-500"></i>
         <p class="mb-1">Você ainda não tem rotinas salvas.</p>
-        <p class="text-[11px] text-slate-500">Use o botão flutuante para criar a primeira rotina.</p>
+        <p class="text-[11px] text-slate-500">Use o botão flutuante para criar a primeira.</p>
       </div>`;
-    lucide.createIcons();
+    refreshIcons();
     return;
   }
 
@@ -651,108 +497,63 @@ function renderRoutinesView() {
         </button>
       </div>
       <p class="text-[11px] text-slate-400 mb-2">
-        ${
-          r.exercises.map((e) => e.name).join(", ") ||
-          "Sem exercícios (adicione para usar a rotina)"
-        }
+        ${r.exercises.map((e) => e.name).join(", ") || "Sem exercícios"}
       </p>
       <button class="btn-primary w-full text-[11px]"
               onclick="startWorkoutFromRoutine('${r.id}')">
-        Iniciar treino com esta rotina
+        Iniciar Treino com esta Rotina
       </button>
     </div>`
     )
     .join("");
-  lucide.createIcons();
+  refreshIcons();
 }
 
 function openRoutineModal(routineId) {
+  const title = $("#routine-modal-title");
+  const deleteBtn = $("#delete-routine-btn");
+  const nameInput = $("#routine-name-input");
+  const modal = $("#routine-modal");
+  if (!modal || !title || !nameInput) return;
+
   if (routineId) {
     currentRoutine = routines.find((r) => r.id === routineId);
     if (!currentRoutine) return;
-    $("#routine-modal-title").textContent = "Editar Rotina";
-    $("#delete-routine-btn").classList.remove("hidden");
+    title.textContent = "Editar Rotina";
+    if (deleteBtn) deleteBtn.classList.remove("hidden");
   } else {
     currentRoutine = { id: "r_" + Date.now(), name: "", exercises: [] };
-    $("#routine-modal-title").textContent = "Nova Rotina";
-    $("#delete-routine-btn").classList.add("hidden");
+    title.textContent = "Nova Rotina";
+    if (deleteBtn) deleteBtn.classList.add("hidden");
   }
 
-  $("#routine-name-input").value = currentRoutine.name || "";
+  nameInput.value = currentRoutine.name || "";
   renderRoutineModalContent();
-  $("#routine-modal").classList.add("show");
-  lucide.createIcons();
+  modal.classList.add("show");
+  refreshIcons();
 }
 
 function renderRoutineModalContent() {
   const list = $("#routine-exercises-list");
+  if (!list) return;
+
   if (!currentRoutine || !currentRoutine.exercises.length) {
     list.innerHTML =
-      '<p class="text-[11px] text-slate-500">Nenhum exercício ainda. Use o botão acima para adicionar.</p>';
+      '<p class="text-[11px] text-slate-500">Nenhum exercício ainda.</p>';
     return;
   }
   list.innerHTML = currentRoutine.exercises
-    .map((ex) => {
-      const targetSets = ex.targetSets || ex.setsTarget || 3;
-      const w = ex.defaultWeight ?? 10;
-      const r = ex.defaultReps ?? 10;
-      const rest = ex.restSeconds ?? 60;
-      return `
-    <div class="rounded-md bg-slate-900/80 border border-slate-700 px-2 py-2 mb-2">
-      <div class="flex justify-between items-center mb-1">
-        <span class="text-[11px] text-slate-200 font-semibold">${ex.name}</span>
-        <button class="text-[11px] text-red-400"
-                onclick="removeExerciseFromRoutine('${ex.id}')">
-          Remover
-        </button>
-      </div>
-      <div class="grid grid-cols-4 gap-1 text-[11px]">
-        <div>
-          <label class="text-slate-400">Séries</label>
-          <input class="input-dark mt-1 text-[11px] px-1 py-[2px]"
-                 type="number" min="1"
-                 value="${targetSets}"
-                 oninput="updateRoutineExercise('${ex.id}','targetSets',this.value)" />
-        </div>
-        <div>
-          <label class="text-slate-400">Kg</label>
-          <input class="input-dark mt-1 text-[11px] px-1 py-[2px]"
-                 type="number" min="0"
-                 value="${w}"
-                 oninput="updateRoutineExercise('${ex.id}','defaultWeight',this.value)" />
-        </div>
-        <div>
-          <label class="text-slate-400">Reps</label>
-          <input class="input-dark mt-1 text-[11px] px-1 py-[2px]"
-                 type="number" min="1"
-                 value="${r}"
-                 oninput="updateRoutineExercise('${ex.id}','defaultReps',this.value)" />
-        </div>
-        <div>
-          <label class="text-slate-400">Descanso</label>
-          <input class="input-dark mt-1 text-[11px] px-1 py-[2px]"
-                 type="number" min="0"
-                 value="${rest}"
-                 oninput="updateRoutineExercise('${ex.id}','restSeconds',this.value)" />
-        </div>
-      </div>
-    </div>`;
-    })
+    .map(
+      (ex) => `
+    <div class="flex justify-between items-center px-2 py-1 rounded-md bg-slate-900/70 mb-1">
+      <span class="text-[11px] text-slate-200">${ex.name}</span>
+      <button class="text-[11px] text-red-400"
+              onclick="removeExerciseFromRoutine('${ex.id}')">
+        Remover
+      </button>
+    </div>`
+    )
     .join("");
-}
-
-function updateRoutineExercise(exId, field, value) {
-  if (!currentRoutine) return;
-  const ex = currentRoutine.exercises.find((e) => e.id === exId);
-  if (!ex) return;
-
-  let v = parseInt(value, 10);
-  if (field === "defaultWeight") {
-    v = parseFloat(value) || 0;
-  }
-  if (!Number.isFinite(v) || v < 0) v = 0;
-
-  ex[field] = v;
 }
 
 function removeExerciseFromRoutine(exId) {
@@ -765,7 +566,8 @@ function removeExerciseFromRoutine(exId) {
 
 function saveRoutine() {
   if (!currentRoutine) return;
-  const name = $("#routine-name-input").value.trim();
+  const nameInput = $("#routine-name-input");
+  const name = nameInput ? nameInput.value.trim() : "";
   if (name.length < 3) {
     alert("O nome da rotina deve ter pelo menos 3 caracteres.");
     return;
@@ -798,15 +600,9 @@ function startWorkoutFromRoutine(routineId) {
     id: "w_" + Date.now(),
     name: r.name,
     startedAt: Date.now(),
-    currentExerciseIndex: 0,
-    rest: null,
     exercises: r.exercises.map((ex) => ({
       id: ex.id,
       name: ex.name,
-      targetSets: ex.targetSets || ex.setsTarget || 3,
-      defaultWeight: ex.defaultWeight ?? 10,
-      defaultReps: ex.defaultReps ?? 10,
-      restSeconds: ex.restSeconds ?? 60,
       sets: [],
     })),
   };
@@ -818,6 +614,8 @@ function startWorkoutFromRoutine(routineId) {
 // ======== FEED ========
 function renderFeedView() {
   const cont = $("#feed-container");
+  if (!cont) return;
+
   if (!communityFeed.length) {
     cont.innerHTML = `
       <div class="empty-state mt-8">
@@ -827,7 +625,7 @@ function renderFeedView() {
           Finalize um treino na aba <b>Rastrear</b> para vê-lo aqui.
         </p>
       </div>`;
-    lucide.createIcons();
+    refreshIcons();
     return;
   }
 
@@ -855,12 +653,14 @@ function renderFeedView() {
       </div>`;
     })
     .join("");
-  lucide.createIcons();
+  refreshIcons();
 }
 
 // ======== PROFILE ========
 function renderProfileView() {
   const cont = $("#profile-container");
+  if (!cont) return;
+
   const totalWorkouts = communityFeed.length;
   const totalSets = communityFeed.reduce((acc, w) => {
     return (
@@ -903,11 +703,12 @@ function renderProfileView() {
           : '<p class="text-[11px] text-slate-500">Finalize treinos com séries para ver PRs aqui.</p>'
       }
     </div>`;
-  lucide.createIcons();
+  refreshIcons();
 }
 
 // ======== INIT ========
 window.addEventListener("DOMContentLoaded", () => {
+  // Tabs
   $$(".tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => openTab(btn.dataset.tab))
   );
@@ -917,27 +718,28 @@ window.addEventListener("DOMContentLoaded", () => {
     searchInput.addEventListener("input", handleExerciseSearch);
   }
 
+  const addSetBtn = $("#add-set-btn");
+  if (addSetBtn) {
+    addSetBtn.addEventListener("click", addSetToCurrentExercise);
+  }
+
   const saveRoutineBtn = $("#save-routine-btn");
   if (saveRoutineBtn) saveRoutineBtn.addEventListener("click", saveRoutine);
 
   const deleteRoutineBtn = $("#delete-routine-btn");
-  if (deleteRoutineBtn)
-    deleteRoutineBtn.addEventListener("click", deleteRoutine);
+  if (deleteRoutineBtn) deleteRoutineBtn.addEventListener("click", deleteRoutine);
 
   loadState();
   renderApp();
 });
 
-// Expor funções para o HTML
+// Expor funções usadas em onclick no HTML
 window.openTab = openTab;
 window.openLibraryModal = openLibraryModal;
 window.closeModal = closeModal;
-window.completeSet = completeSet;
-window.skipRest = skipRest;
-window.changeExercise = changeExercise;
+window.openSetsModal = openSetsModal;
 window.openRoutineModal = openRoutineModal;
 window.removeExerciseFromRoutine = removeExerciseFromRoutine;
 window.saveRoutine = saveRoutine;
 window.deleteRoutine = deleteRoutine;
 window.startWorkoutFromRoutine = startWorkoutFromRoutine;
-window.updateRoutineExercise = updateRoutineExercise;
