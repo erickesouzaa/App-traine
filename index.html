@@ -90,7 +90,24 @@
     <button id="fab-button" class="fab bg-blue-600 text-white"></button>
   </div>
 
-  <!-- MODAL: BIBLIOTECA DE EXERCÍCIOS (bottom sheet) -->
+  <!-- BARRA DE DESCANSO -->
+  <div id="rest-timer-bar" class="fixed bottom-16 left-0 right-0 flex justify-center pointer-events-none hidden z-30">
+    <div class="pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-full bg-slate-900/95 border border-blue-500/70 shadow-lg text-[11px] text-slate-100 max-w-xs">
+      <button onclick="adjustRest(-15)" class="px-2 py-1 rounded-full border border-slate-600 text-[10px]">
+        -15s
+      </button>
+      <span class="text-slate-300">Descanso</span>
+      <span id="rest-timer-label" class="text-sm font-semibold tabular-nums">00:00</span>
+      <button onclick="adjustRest(15)" class="px-2 py-1 rounded-full border border-slate-600 text-[10px]">
+        +15s
+      </button>
+      <button onclick="skipRest()" class="px-3 py-1 rounded-full bg-blue-600 text-[10px] font-semibold">
+        Pular
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: BIBLIOTECA DE EXERCÍCIOS -->
   <div id="exercise-library-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
@@ -104,7 +121,7 @@
     </div>
   </div>
 
-  <!-- MODAL: SETS DO EXERCÍCIO ATIVO (bottom sheet) -->
+  <!-- MODAL: SETS DO EXERCÍCIO ATIVO -->
   <div id="sets-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
@@ -114,23 +131,25 @@
         </button>
       </div>
 
-      <div id="sets-exercise-info" class="text-xs text-slate-400 mb-3">
-        Registre peso e repetições para cada série.
-      </div>
+      <div id="sets-exercise-info" class="text-xs text-slate-400 mb-3"></div>
 
       <div class="card p-3 mb-3">
         <p class="text-xs font-semibold text-slate-300 mb-2">Registrar nova série</p>
-        <div class="grid grid-cols-2 gap-2 mb-2">
+        <div class="grid grid-cols-3 gap-2 mb-2 text-[11px]">
           <div>
-            <p class="text-[11px] text-slate-400 mb-1">Peso (kg)</p>
-            <input id="set-weight-input" type="number" min="0" class="input-dark" placeholder="Peso (Kg)" value="10" />
+            <p class="text-[10px] text-slate-400 mb-1">Peso (kg)</p>
+            <input id="set-weight-input" type="number" min="0" class="input-dark" value="10" />
           </div>
           <div>
-            <p class="text-[11px] text-slate-400 mb-1">Repetições</p>
-            <input id="set-reps-input" type="number" min="1" class="input-dark" placeholder="Reps" value="10" />
+            <p class="text-[10px] text-slate-400 mb-1">Reps</p>
+            <input id="set-reps-input" type="number" min="1" class="input-dark" value="10" />
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-400 mb-1">Descanso (s)</p>
+            <input id="set-rest-input" type="number" min="0" class="input-dark" value="60" />
           </div>
         </div>
-        <button id="add-set-btn" class="btn-primary w-full">Adicionar Série</button>
+        <button id="add-set-btn" class="btn-primary w-full">Concluir série</button>
       </div>
 
       <div class="card p-3">
@@ -140,9 +159,9 @@
     </div>
   </div>
 
-  <!-- MODAL: CRIAR / EDITAR ROTINA (CENTRAL) -->
-  <div id="routine-modal" class="modal-backdrop center z-40">
-    <div class="modal-panel center-panel">
+  <!-- MODAL: CRIAR / EDITAR ROTINA (CENTRO DA TELA) -->
+  <div id="routine-modal" class="modal-backdrop center-modal z-40">
+    <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
         <h2 id="routine-modal-title" class="text-sm font-semibold text-slate-100">Nova Rotina</h2>
         <button onclick="closeModal('routine-modal')" class="p-1 rounded-full hover:bg-slate-800">
@@ -175,6 +194,7 @@
   </div>
 
   <!-- LÓGICA DO APP -->
+  <script src="exercises.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>
