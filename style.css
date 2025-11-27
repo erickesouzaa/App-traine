@@ -72,11 +72,10 @@ body {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 1rem;
+  bottom: 4rem; /* subiu um pouco por causa da nav inferior */
   display: flex;
   justify-content: center;
   pointer-events: none;
-  z-index: 20;
 }
 .fab {
   pointer-events: auto;
@@ -96,17 +95,19 @@ body {
   inset: 0;
   background: rgba(15, 23, 42, 0.9);
   display: none;
-  align-items: flex-end; /* bottom sheet padrão */
+  align-items: flex-end;
   justify-content: center;
   z-index: 40;
 }
 .modal-backdrop.show {
   display: flex;
 }
-/* rotina abre no centro da tela */
-.modal-backdrop.center-modal {
+
+/* Modal central (rotina e exercício da rotina) */
+.modal-center {
   align-items: center;
 }
+
 .modal-panel {
   width: 100%;
   max-width: 480px;
