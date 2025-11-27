@@ -82,7 +82,7 @@
     </button>
   </nav>
 
-  <!-- CRITICAL ERROR BAR -->
+  <!-- CRITICAL ERROR BAR (aparece só se der erro de localStorage) -->
   <div id="critical-error-bar" class="fixed top-0 left-0 right-0 bg-red-700 text-white text-xs text-center py-1 hidden z-50"></div>
 
   <!-- FLOATING ACTION BUTTON -->
@@ -104,7 +104,7 @@
     </div>
   </div>
 
-  <!-- MODAL: SETS DO EXERCÍCIO ATIVO (MODO LIVRE) -->
+  <!-- MODAL: SETS DO EXERCÍCIO ATIVO (modo clássico) -->
   <div id="sets-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
@@ -132,8 +132,8 @@
     </div>
   </div>
 
-  <!-- MODAL: CRIAR / EDITAR ROTINA (CENTRO) -->
-  <div id="routine-modal" class="modal-backdrop modal-center z-40">
+  <!-- MODAL: CRIAR / EDITAR ROTINA (bottom sheet ainda) -->
+  <div id="routine-modal" class="modal-backdrop z-40">
     <div class="modal-panel">
       <div class="flex items-center justify-between mb-2">
         <h2 id="routine-modal-title" class="text-sm font-semibold text-slate-100">Nova Rotina</h2>
@@ -144,7 +144,7 @@
 
       <div class="space-y-2 mb-3">
         <label class="text-xs text-slate-400">Nome da rotina</label>
-        <input id="routine-name-input" class="input-dark" placeholder="Ex: Terça - Peito / Tríceps" />
+        <input id="routine-name-input" class="input-dark" placeholder="Ex: Treino A - Peito / Tríceps" />
       </div>
 
       <div class="space-y-2 mb-3">
@@ -166,45 +166,23 @@
     </div>
   </div>
 
-  <!-- MODAL: CONFIGURAR EXERCÍCIO DA ROTINA (CENTRO) -->
-  <div id="routine-exercise-modal" class="modal-backdrop modal-center z-50">
-    <div class="modal-panel">
+  <!-- NEW MODAL: CONFIGURAR EXERCÍCIO (abre no meio da tela) -->
+  <div id="exercise-config-modal" class="modal-backdrop z-50">
+    <div class="modal-panel max-w-2xl mx-auto" style="max-height:85vh;">
       <div class="flex items-center justify-between mb-2">
-        <h2 id="routine-exercise-modal-title" class="text-sm font-semibold text-slate-100">Configurar exercício</h2>
-        <button onclick="cancelRoutineExercise()" class="p-1 rounded-full hover:bg-slate-800">
+        <h2 id="exercise-config-title" class="text-sm font-semibold text-slate-100">Configurar Exercício</h2>
+        <button onclick="cancelPendingExercise()" class="p-1 rounded-full hover:bg-slate-800">
           <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
         </button>
       </div>
 
-      <p id="routine-exercise-name" class="text-sm font-semibold text-slate-100 mb-2"></p>
-
-      <div class="card p-3 mb-3">
-        <p class="text-xs font-semibold text-slate-300 mb-2">Adicionar série</p>
-        <div class="grid grid-cols-3 gap-2 mb-2 text-xs">
-          <div>
-            <p class="text-[10px] text-slate-400 mb-1">Carga (kg)</p>
-            <input id="routine-exercise-weight" type="number" min="0" class="input-dark" value="10" />
-          </div>
-          <div>
-            <p class="text-[10px] text-slate-400 mb-1">Reps</p>
-            <input id="routine-exercise-reps" type="number" min="1" class="input-dark" value="10" />
-          </div>
-          <div>
-            <p class="text-[10px] text-slate-400 mb-1">Descanso (seg)</p>
-            <input id="routine-exercise-rest" type="number" min="0" class="input-dark" value="60" />
-          </div>
-        </div>
-        <button id="routine-exercise-add-btn" class="btn-primary w-full">Adicionar série</button>
-      </div>
-
-      <div class="card p-3">
-        <p class="text-xs font-semibold text-slate-300 mb-2">Séries desta rotina</p>
-        <div id="routine-exercise-sets-list" class="space-y-1 text-xs"></div>
+      <div id="exercise-config-body" class="space-y-3">
+        <!-- conteúdo gerado por JS -->
       </div>
 
       <div class="flex gap-2 mt-4">
-        <button id="routine-exercise-save-btn" class="btn-primary flex-1">Salvar exercício</button>
-        <button id="routine-exercise-cancel-btn" class="flex-1 text-xs font-semibold text-slate-300 border border-slate-600 rounded-full px-3 py-2">
+        <button id="save-exercise-to-routine-btn" class="btn-primary flex-1">Salvar Exercício</button>
+        <button onclick="cancelPendingExercise()" class="flex-1 text-xs font-semibold text-slate-300 border border-slate-700 rounded-full px-3 py-2">
           Cancelar
         </button>
       </div>
@@ -212,7 +190,6 @@
   </div>
 
   <!-- LÓGICA DO APP -->
-  <script src="exercises.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
