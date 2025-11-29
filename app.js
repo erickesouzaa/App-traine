@@ -50,27 +50,38 @@ function loadState() {
     routines = rt ? JSON.parse(rt) : [];
     communityFeed = fd ? JSON.parse(fd) : [];
     personalRecords = pr ? JSON.parse(pr) : [];
-    // Migration: if routines use flat exercise objects (without sets), convert
-    routines = routines.map((r) => {
-      r.exercises = (r.exercises || []).map((ex) => {
-        if (!ex.sets) {
-          // if has weight/reps/rest flat, convert
+
+    // SANITIZAÇÃO: garante que routines e exercises sejam arrays válidos e que sets existam
+    routines = Array.isArray(routines) ? routines.map((r) => {
+      if (!r || typeof r !== "object") return { id: "invalid_" + Date.now(), name: "Inválida", exercises: [] };
+      r.exercises = Array.isArray(r.exercises) ? r.exercises.map((ex) => {
+        if (!ex || typeof ex !== "object") return null;
+        // se ex for formato antigo (sem sets) converte para sets[]
+        if (!Array.isArray(ex.sets)) {
+          // tenta mapear campos antigos
           if (ex.weight || ex.reps || ex.rest) {
-            return {
-              id: ex.id,
-              name: ex.name,
-              sets: [{ weight: ex.weight || 0, reps: ex.reps || 0, rest: ex.rest || 60 }],
-            };
+            return { id: ex.id || ("ex_" + Date.now()), name: ex.name || "Exercício", sets: [{ weight: ex.weight||0, reps: ex.reps||0, rest: ex.rest||60 }] };
           }
-          return { id: ex.id, name: ex.name, sets: ex.sets || [] };
+          return { id: ex.id || ("ex_" + Date.now()), name: ex.name || "Exercício", sets: [] };
         }
+        // garante que sets é array e cada set tem campos obrigatórios
+        ex.sets = ex.sets.map(s => {
+          if (!s || typeof s !== "object") return { weight: 0, reps: 0, rest: 60 };
+          return { weight: s.weight || 0, reps: s.reps || 0, rest: s.rest || 60, done: !!s.done, ts: s.ts || null };
+        });
         return ex;
-      });
+      }).filter(Boolean) : [];
       return r;
-    });
+    }) : [];
+
   } catch (e) {
     console.error("Erro ao carregar estado:", e);
-    showCriticalError("Erro ao ler dados locais (localStorage).");
+    showCriticalError("Erro ao ler dados locais (localStorage). Os dados foram ignorados.");
+    // reset de segurança (evita loop)
+    activeWorkout = null;
+    routines = [];
+    communityFeed = [];
+    personalRecords = [];
   }
 }
 
