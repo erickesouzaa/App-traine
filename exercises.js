@@ -1,5 +1,5 @@
-// exercises.js
-export const EXERCISE_LIBRARY = [
+// exercises.js (versão global - cole todo o conteúdo aqui)
+window.EXERCISE_LIBRARY = [
   { id: "supino_reto", name: "Supino Reto com Barra", group: "Peito" },
   { id: "supino_inclinado", name: "Supino Inclinado com Halteres", group: "Peito" },
   { id: "crucifixo_maquina", name: "Crucifixo no Voador", group: "Peito" },
@@ -18,4 +18,5 @@ export const EXERCISE_LIBRARY = [
   { id: "triceps_testa", name: "Tríceps Testa", group: "Tríceps" },
   { id: "desenvolvimento", name: "Desenvolvimento com Halteres", group: "Ombros" },
   { id: "elevacao_lateral", name: "Elevação Lateral", group: "Ombros" },
+  // ...adicione o resto dos exercícios aqui
 ];
