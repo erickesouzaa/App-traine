@@ -134,3 +134,14 @@ body {
   border-color: #3b82f6;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
+/* centralizar modal quando tiver a classe center */
+.modal-backdrop.center {
+  align-items: center; /* centraliza verticalmente */
+  justify-content: center; /* centraliza horizontalmente */
+}
+
+/* torna painel central um pouco menor para aparecer no meio */
+.modal-backdrop.center .modal-panel {
+  max-height: 80vh;
+  border-radius: 0.75rem;
+}
